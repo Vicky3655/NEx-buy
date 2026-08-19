@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Nexbuy Marketplace - UNN</title>
+  <title>Nexbuy Marketplace - UNN Admin & Student Hub</title>
   
   <!-- Telegram Web App SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   
-  <!-- Google Fonts: Plus Jakarta Sans -->
+  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -20,7 +20,7 @@
 </head>
 <body>
 
-  <!-- ================= AUTH VIEW (LOGIN / REGISTER) ================= -->
+  <!-- ================= AUTH VIEW ================= -->
   <div id="auth-container" class="auth-container">
     <div class="auth-card">
       <div class="brand-header">
@@ -119,16 +119,21 @@
     
     <!-- Top Header -->
     <header class="top-nav">
-      <div class="brand-mini">
+      <div class="brand-mini" onclick="switchView('home-view')">
         <i class="fa-solid fa-bag-shopping brand-icon"></i>
         <div>
           <h2>Nexbuy</h2>
           <span class="badge-sub"><i class="fa-solid fa-circle-check"></i> UNN Verified</span>
         </div>
       </div>
-      <div class="user-pill" onclick="switchView('profile-view')">
-        <i class="fa-solid fa-graduation-cap"></i>
-        <span id="nav-user-name">Lion/Lioness</span>
+      <div class="header-actions">
+        <button class="btn-admin-pill" onclick="promptAdminAccess()" title="Admin Control Room">
+          <i class="fa-solid fa-shield-halved"></i> <span>Admin</span>
+        </button>
+        <div class="user-pill" onclick="switchView('profile-view')">
+          <i class="fa-solid fa-graduation-cap"></i>
+          <span id="nav-user-name">Lion</span>
+        </div>
       </div>
     </header>
 
@@ -137,7 +142,6 @@
 
       <!-- 1. HOME / MARKETPLACE VIEW -->
       <section id="home-view" class="view-panel active">
-        <!-- Hero Banner -->
         <div class="hero-banner">
           <div class="hero-content">
             <span class="pill-chip">UNN's #1 Student Hub</span>
@@ -149,7 +153,6 @@
           </div>
         </div>
 
-        <!-- Web3 & Perks Announcement Strip -->
         <div class="web3-strip" onclick="switchView('web3-view')">
           <div class="strip-icon"><i class="fa-brands fa-ethereum"></i></div>
           <div class="strip-text">
@@ -158,13 +161,11 @@
           </div>
         </div>
 
-        <!-- Search Bar -->
         <div class="search-bar">
           <i class="fa-solid fa-magnifying-glass"></i>
           <input type="text" id="search-input" placeholder="Search textbooks, laptops, hostel items..." oninput="filterProducts()">
         </div>
 
-        <!-- Category Pills -->
         <div class="category-slider">
           <button class="cat-pill active" onclick="setCategory('All')">All</button>
           <button class="cat-pill" onclick="setCategory('Gadgets')">Gadgets</button>
@@ -173,7 +174,6 @@
           <button class="cat-pill" onclick="setCategory('Hostel')">Hostel Items</button>
         </div>
 
-        <!-- Product Grid -->
         <div class="section-title">
           <h4>Explore UNN Listings</h4>
           <span class="live-count" id="product-count">0 items</span>
@@ -190,6 +190,15 @@
           <div class="panel-header">
             <h3>Post Your Product</h3>
             <p>Reach thousands of UNN & Nsukka students instantly.</p>
+          </div>
+
+          <!-- Permission status banner (shown when user is restricted) -->
+          <div id="sell-restriction-banner" class="restriction-box hidden">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <div>
+              <strong>Selling Restricted by Admin</strong>
+              <p>Your account is pending verification or subscription. Contact Nexbuy Support to enable sales.</p>
+            </div>
           </div>
 
           <form id="sell-form" onsubmit="handlePostProduct(event)">
@@ -228,18 +237,18 @@
             </div>
 
             <div class="input-group">
-              <label>WhatsApp / Phone for Buyer to reach you</label>
+              <label>WhatsApp / Phone Number</label>
               <div class="input-box">
                 <input type="tel" id="post-contact" placeholder="08012345678" required>
               </div>
             </div>
 
             <div class="input-group">
-              <label>Product Image Link (or icon placeholder)</label>
+              <label>Product Image Link (Optional)</label>
               <div class="input-box">
                 <input type="url" id="post-image" placeholder="https://images.unsplash.com/...">
               </div>
-              <small class="hint">Leave empty to use a default high-quality campus image.</small>
+              <small class="hint">Leave empty to use high-quality campus stock image.</small>
             </div>
 
             <div class="input-group">
@@ -247,7 +256,7 @@
               <textarea id="post-desc" rows="3" placeholder="Condition of item, reason for selling, negotiable or fixed..."></textarea>
             </div>
 
-            <button type="submit" class="btn-primary pulse-btn">
+            <button type="submit" id="post-submit-btn" class="btn-primary">
               <i class="fa-solid fa-cloud-arrow-up"></i>
               <span>Post Listing Now</span>
             </button>
@@ -268,7 +277,7 @@
             <div class="perk-icon"><i class="fa-solid fa-graduation-cap"></i></div>
             <h4>Web3 Campus Guild</h4>
             <p>Free weekly masterclasses on smart contracts, crypto trading, and Web3 jobs.</p>
-            <button class="btn-outline-sm" onclick="showToast('Guild invite copied to clipboard!')">Join Guild</button>
+            <button class="btn-outline-sm" onclick="showToast('Guild invite copied!')">Join Guild</button>
           </div>
 
           <div class="perk-card">
@@ -288,20 +297,23 @@
           </div>
           <h3 id="prof-name">Chidubem Okeke</h3>
           <p id="prof-hostel" class="prof-sub">Mary Slessor Hostel • UNN</p>
-          <div class="verified-tag"><i class="fa-solid fa-shield-halved"></i> UNN Verified Student</div>
+          
+          <div id="prof-plan-badge" class="verified-tag">
+            <i class="fa-solid fa-shield-halved"></i> UNN Verified Student
+          </div>
 
           <div class="profile-stats">
             <div class="stat-box">
-              <span class="stat-num" id="user-listing-count">3</span>
-              <span class="stat-lbl">Listings</span>
+              <span class="stat-num" id="user-selling-status">Allowed</span>
+              <span class="stat-lbl">Seller Status</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-num" id="user-tier-status">Free</span>
+              <span class="stat-lbl">Vendor Tier</span>
             </div>
             <div class="stat-box">
               <span class="stat-num">4.9 ★</span>
               <span class="stat-lbl">Rating</span>
-            </div>
-            <div class="stat-box">
-              <span class="stat-num">100%</span>
-              <span class="stat-lbl">Trusted</span>
             </div>
           </div>
 
@@ -311,9 +323,90 @@
         </div>
       </section>
 
+      <!-- 5. ADMIN CONTROL PANEL VIEW (NEW) -->
+      <section id="admin-view" class="view-panel">
+        <div class="admin-header-strip">
+          <div class="admin-tag"><i class="fa-solid fa-shield-dog"></i> SuperAdmin Hub</div>
+          <button class="btn-exit-admin" onclick="switchView('home-view')"><i class="fa-solid fa-xmark"></i> Exit</button>
+        </div>
+
+        <!-- Mini Market Monitor -->
+        <div class="monitor-wrapper">
+          <div class="monitor-top">
+            <h4><i class="fa-solid fa-chart-line"></i> UNN Market Monitor</h4>
+            <span class="pulse-live"><span class="dot"></span> Live</span>
+          </div>
+
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <span class="m-label">Gross Volume (GMV)</span>
+              <h3 id="adm-metric-gmv">₦0</h3>
+              <small class="m-sub">Campus listing value</small>
+            </div>
+            <div class="metric-card highlight">
+              <span class="m-label">Monetization Earned</span>
+              <h3 id="adm-metric-revenue">₦12,500</h3>
+              <small class="m-sub">Pro tiers & ad boosts</small>
+            </div>
+            <div class="metric-card">
+              <span class="m-label">Active Listings</span>
+              <h3 id="adm-metric-listings">0</h3>
+              <small class="m-sub">Around Nsukka</small>
+            </div>
+            <div class="metric-card">
+              <span class="m-label">Verified Sellers</span>
+              <h3 id="adm-metric-sellers">0</h3>
+              <small class="m-sub">UNN verified</small>
+            </div>
+          </div>
+
+          <!-- Mini Campus Activity Bar -->
+          <div class="campus-bar-section">
+            <span class="bar-title">Market Activity by Hostel Location</span>
+            <div class="hostel-bars">
+              <div class="bar-item">
+                <span>Mary Slessor</span>
+                <div class="bar-track"><div class="bar-fill" style="width: 45%;"></div></div>
+                <span>45%</span>
+              </div>
+              <div class="bar-item">
+                <span>Franco</span>
+                <div class="bar-track"><div class="bar-fill" style="width: 30%;"></div></div>
+                <span>30%</span>
+              </div>
+              <div class="bar-item">
+                <span>Hilltop / Off-campus</span>
+                <div class="bar-track"><div class="bar-fill" style="width: 25%;"></div></div>
+                <span>25%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Student Users & Monetization Management -->
+        <div class="admin-section">
+          <div class="admin-section-head">
+            <h4><i class="fa-solid fa-users-gear"></i> Manage Sellers & Monetization</h4>
+          </div>
+          <div id="admin-users-list" class="admin-users-list">
+            <!-- User rows injected by JS -->
+          </div>
+        </div>
+
+        <!-- Listing Moderation Feed -->
+        <div class="admin-section">
+          <div class="admin-section-head">
+            <h4><i class="fa-solid fa-boxes-stacked"></i> Moderate Products</h4>
+          </div>
+          <div id="admin-listings-list" class="admin-listings-list">
+            <!-- Listing cards injected by JS -->
+          </div>
+        </div>
+      </section>
+
     </main>
 
-    <!-- Bottom Navigation Bar (Telegram Friendly) -->
+    <!-- Bottom Navigation Bar -->
     <nav class="bottom-nav">
       <button class="nav-item active" onclick="switchView('home-view')">
         <i class="fa-solid fa-shop"></i>
