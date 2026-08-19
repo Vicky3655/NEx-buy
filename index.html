@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Nexbuy Marketplace - UNN</title>
+  
+  <!-- Telegram Web App SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ================= AUTH VIEW (LOGIN / REGISTER) ================= -->
+  <div id="auth-container" class="auth-container">
+    <div class="auth-card">
+      <div class="brand-header">
+        <div class="rocket-badge">
+          <i class="fa-solid fa-rocket"></i>
+        </div>
+        <h1>Nexbuy</h1>
+        <p class="tagline">BUY. SELL. CONNECT. (UNN & Nsukka)</p>
+      </div>
+
+      <div class="auth-toggle">
+        <button id="tab-login-btn" class="active" onclick="switchAuthTab('login')">Sign In</button>
+        <button id="tab-register-btn" onclick="switchAuthTab('register')">Register</button>
+      </div>
+
+      <!-- Sign In Form -->
+      <form id="login-form" onsubmit="handleLogin(event)">
+        <div class="input-group">
+          <label>UNN Email / Matric or Phone</label>
+          <div class="input-box">
+            <i class="fa-solid fa-user"></i>
+            <input type="text" id="login-id" placeholder="e.g. 2021/245890 or 080..." required>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label>Password</label>
+          <div class="input-box">
+            <i class="fa-solid fa-lock"></i>
+            <input type="password" id="login-pass" placeholder="••••••••" required>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-primary">
+          <span>Enter Marketplace</span>
+          <i class="fa-solid fa-arrow-right"></i>
+        </button>
+
+        <button type="button" class="btn-tg" onclick="handleTelegramQuickAuth()">
+          <i class="fa-brands fa-telegram"></i> Fast Login with Telegram
+        </button>
+      </form>
+
+      <!-- Register Form -->
+      <form id="register-form" class="hidden" onsubmit="handleRegister(event)">
+        <div class="input-group">
+          <label>Full Name</label>
+          <div class="input-box">
+            <i class="fa-solid fa-id-card"></i>
+            <input type="text" id="reg-name" placeholder="Chidubem Okeke" required>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label>Campus / Hostel Location</label>
+          <div class="input-box">
+            <i class="fa-solid fa-location-dot"></i>
+            <select id="reg-location" required>
+              <option value="Franco Hostel">Franco Hostel (UNN)</option>
+              <option value="Mary Slessor Hostel">Mary Slessor Hostel</option>
+              <option value="Nkrumah Hostel">Nkrumah Hostel</option>
+              <option value="Hilltop Nsukka">Hilltop Area</option>
+              <option value="Odenigwe">Odenigwe</option>
+              <option value="UNEC Campus">UNEC Campus</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label>WhatsApp / Phone Number</label>
+          <div class="input-box">
+            <i class="fa-solid fa-phone"></i>
+            <input type="tel" id="reg-phone" placeholder="08123456789" required>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label>Password</label>
+          <div class="input-box">
+            <i class="fa-solid fa-lock"></i>
+            <input type="password" id="reg-pass" placeholder="Create password" required>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-primary">
+          <span>Create UNN Account</span>
+          <i class="fa-solid fa-user-plus"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- ================= MAIN APP VIEW ================= -->
+  <div id="main-app" class="main-app hidden">
+    
+    <!-- Top Header -->
+    <header class="top-nav">
+      <div class="brand-mini">
+        <i class="fa-solid fa-bag-shopping brand-icon"></i>
+        <div>
+          <h2>Nexbuy</h2>
+          <span class="badge-sub"><i class="fa-solid fa-circle-check"></i> UNN Verified</span>
+        </div>
+      </div>
+      <div class="user-pill" onclick="switchView('profile-view')">
+        <i class="fa-solid fa-graduation-cap"></i>
+        <span id="nav-user-name">Lion/Lioness</span>
+      </div>
+    </header>
+
+    <!-- Content Sections -->
+    <main class="app-content">
+
+      <!-- 1. HOME / MARKETPLACE VIEW -->
+      <section id="home-view" class="view-panel active">
+        <!-- Hero Banner -->
+        <div class="hero-banner">
+          <div class="hero-content">
+            <span class="pill-chip">UNN's #1 Student Hub</span>
+            <h3>Buy. Sell. Connect around Nsukka.</h3>
+            <p>Fast, local trades right inside your hostel.</p>
+          </div>
+          <div class="hero-art">
+            <i class="fa-solid fa-rocket float-anim"></i>
+          </div>
+        </div>
+
+        <!-- Web3 & Perks Announcement Strip -->
+        <div class="web3-strip" onclick="switchView('web3-view')">
+          <div class="strip-icon"><i class="fa-brands fa-ethereum"></i></div>
+          <div class="strip-text">
+            <strong>Web3 & Campus Bounties</strong>
+            <span>Learn, Earn crypto & Stay Ahead &rarr;</span>
+          </div>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="search-bar">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="search-input" placeholder="Search textbooks, laptops, hostel items..." oninput="filterProducts()">
+        </div>
+
+        <!-- Category Pills -->
+        <div class="category-slider">
+          <button class="cat-pill active" onclick="setCategory('All')">All</button>
+          <button class="cat-pill" onclick="setCategory('Gadgets')">Gadgets</button>
+          <button class="cat-pill" onclick="setCategory('Academics')">Books & Notes</button>
+          <button class="cat-pill" onclick="setCategory('Fashion')">Fashion</button>
+          <button class="cat-pill" onclick="setCategory('Hostel')">Hostel Items</button>
+        </div>
+
+        <!-- Product Grid -->
+        <div class="section-title">
+          <h4>Explore UNN Listings</h4>
+          <span class="live-count" id="product-count">0 items</span>
+        </div>
+
+        <div id="product-grid" class="product-grid">
+          <!-- Dynamic Products loaded via JS -->
+        </div>
+      </section>
+
+      <!-- 2. SELL / POST PRODUCT VIEW -->
+      <section id="sell-view" class="view-panel">
+        <div class="form-container">
+          <div class="panel-header">
+            <h3>Post Your Product</h3>
+            <p>Reach thousands of UNN & Nsukka students instantly.</p>
+          </div>
+
+          <form id="sell-form" onsubmit="handlePostProduct(event)">
+            <div class="input-group">
+              <label>Product Title</label>
+              <div class="input-box">
+                <input type="text" id="post-title" placeholder="e.g. Engineering Math 1 Textbook, iPhone 12..." required>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="input-group">
+                <label>Price (₦ NGN)</label>
+                <div class="input-box">
+                  <input type="number" id="post-price" placeholder="4500" required>
+                </div>
+              </div>
+              <div class="input-group">
+                <label>Category</label>
+                <div class="input-box">
+                  <select id="post-category" required>
+                    <option value="Gadgets">Gadgets</option>
+                    <option value="Academics">Books & Notes</option>
+                    <option value="Fashion">Fashion</option>
+                    <option value="Hostel">Hostel Items</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="input-group">
+              <label>Pickup Location (Hostel / Campus Spot)</label>
+              <div class="input-box">
+                <input type="text" id="post-location" placeholder="e.g. Franco A, Mary Slessor, Hilltop Gate" required>
+              </div>
+            </div>
+
+            <div class="input-group">
+              <label>WhatsApp / Phone for Buyer to reach you</label>
+              <div class="input-box">
+                <input type="tel" id="post-contact" placeholder="08012345678" required>
+              </div>
+            </div>
+
+            <div class="input-group">
+              <label>Product Image Link (or icon placeholder)</label>
+              <div class="input-box">
+                <input type="url" id="post-image" placeholder="https://images.unsplash.com/...">
+              </div>
+              <small class="hint">Leave empty to use a default high-quality campus image.</small>
+            </div>
+
+            <div class="input-group">
+              <label>Description</label>
+              <textarea id="post-desc" rows="3" placeholder="Condition of item, reason for selling, negotiable or fixed..."></textarea>
+            </div>
+
+            <button type="submit" class="btn-primary pulse-btn">
+              <i class="fa-solid fa-cloud-arrow-up"></i>
+              <span>Post Listing Now</span>
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <!-- 3. WEB3 & COMMUNITY VIEW -->
+      <section id="web3-view" class="view-panel">
+        <div class="web3-hero">
+          <div class="web3-badge"><i class="fa-solid fa-cube"></i> Nexbuy Web3 Hub</div>
+          <h2>We're Building The Future</h2>
+          <p>From UNN to every campus in Nigeria. Learn blockchain, earn rewards, and trade with crypto.</p>
+        </div>
+
+        <div class="perk-cards">
+          <div class="perk-card">
+            <div class="perk-icon"><i class="fa-solid fa-graduation-cap"></i></div>
+            <h4>Web3 Campus Guild</h4>
+            <p>Free weekly masterclasses on smart contracts, crypto trading, and Web3 jobs.</p>
+            <button class="btn-outline-sm" onclick="showToast('Guild invite copied to clipboard!')">Join Guild</button>
+          </div>
+
+          <div class="perk-card">
+            <div class="perk-icon"><i class="fa-solid fa-coins"></i></div>
+            <h4>Nexbuy Student Rewards</h4>
+            <p>Earn points for every trusted trade and redeem for airtime, USDT, and data.</p>
+            <button class="btn-outline-sm" onclick="showToast('Your Balance: 150 NexPoints')">Check Balance</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. PROFILE VIEW -->
+      <section id="profile-view" class="view-panel">
+        <div class="profile-card">
+          <div class="avatar-circle">
+            <i class="fa-solid fa-user-graduate"></i>
+          </div>
+          <h3 id="prof-name">Chidubem Okeke</h3>
+          <p id="prof-hostel" class="prof-sub">Mary Slessor Hostel • UNN</p>
+          <div class="verified-tag"><i class="fa-solid fa-shield-halved"></i> UNN Verified Student</div>
+
+          <div class="profile-stats">
+            <div class="stat-box">
+              <span class="stat-num" id="user-listing-count">3</span>
+              <span class="stat-lbl">Listings</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-num">4.9 ★</span>
+              <span class="stat-lbl">Rating</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-num">100%</span>
+              <span class="stat-lbl">Trusted</span>
+            </div>
+          </div>
+
+          <button class="btn-secondary" onclick="handleLogout()">
+            <i class="fa-solid fa-arrow-right-from-bracket"></i> Sign Out
+          </button>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Bottom Navigation Bar (Telegram Friendly) -->
+    <nav class="bottom-nav">
+      <button class="nav-item active" onclick="switchView('home-view')">
+        <i class="fa-solid fa-shop"></i>
+        <span>Market</span>
+      </button>
+      <button class="nav-item" onclick="switchView('sell-view')">
+        <div class="sell-fab-icon"><i class="fa-solid fa-plus"></i></div>
+        <span>Sell</span>
+      </button>
+      <button class="nav-item" onclick="switchView('web3-view')">
+        <i class="fa-solid fa-cubes-stacked"></i>
+        <span>Web3</span>
+      </button>
+      <button class="nav-item" onclick="switchView('profile-view')">
+        <i class="fa-solid fa-circle-user"></i>
+        <span>Profile</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast">Message here</div>
+
+  <script src="app.js"></script>
+</body>
+</html>
