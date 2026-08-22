@@ -75,8 +75,8 @@ let currentUploadedImageBase64 = null;
 // ============================================================
 
 // TODO: replace with your project's own values (Project Settings -> API)
-const SUPABASE_URL = "https://YOUR-PROJECT-REF.supabase.co";
-const SUPABASE_ANON_KEY = "YOUR-ANON-PUBLIC-KEY";
+const SUPABASE_URL = "https://tartoasyifwxgfgfurep.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_iJ_4HGUtGWLoNXxxJCqV3g_1Wy771FS";
 
 let sbClient = null;          // set once the Supabase SDK has loaded
 let cachedToken = null;       // the current signed-in JWT
