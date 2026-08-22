@@ -53,6 +53,9 @@ let currentCategory = 'All';
 let currentUser = JSON.parse(localStorage.getItem('nexbuy_user')) || null;
 let isLightMode = localStorage.getItem('nexbuy_theme') === 'light';
 
+// Current uploaded image in Base64 (from phone storage)
+let currentUploadedImageBase64 = null;
+
 // Initialize App
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
@@ -237,6 +240,70 @@ function switchView(viewId) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+// ================= 📸 PHONE IMAGE UPLOAD HANDLER =================
+// Reads phone image & compresses using HTML5 Canvas to prevent storage crash
+function handleImageSelect(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  if (!file.type.startsWith('image/')) {
+    showToast("Please upload an image file (PNG, JPG, etc.)");
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.src = e.target.result;
+
+    img.onload = function() {
+      // Compress image to max 700px width/height and 0.75 JPEG quality
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      const maxDim = 700;
+      let width = img.width;
+      let height = img.height;
+
+      if (width > height) {
+        if (width > maxDim) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        }
+      } else {
+        if (height > maxDim) {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Convert to compressed Base64 Data URL
+      currentUploadedImageBase64 = canvas.toDataURL('image/jpeg', 0.75);
+
+      // Display Preview & Hide Placeholder
+      document.getElementById('image-preview').src = currentUploadedImageBase64;
+      document.getElementById('upload-placeholder').classList.add('hidden');
+      document.getElementById('image-preview-container').classList.remove('hidden');
+      showToast("Photo attached successfully!");
+    };
+  };
+  reader.readAsDataURL(file);
+}
+
+// Remove the selected image preview
+function removeSelectedImage(event) {
+  if (event) event.stopPropagation(); // Prevents re-opening the file dialog
+  currentUploadedImageBase64 = null;
+  document.getElementById('post-file-input').value = "";
+  document.getElementById('image-preview').src = "";
+  document.getElementById('image-preview-container').classList.add('hidden');
+  document.getElementById('upload-placeholder').classList.remove('hidden');
+}
+
 // ================= MARKETPLACE CONTROLLERS =================
 function setCategory(cat) {
   currentCategory = cat;
@@ -264,7 +331,6 @@ function renderProducts() {
   renderProductGrid(products);
 }
 
-// Render Products with "Chat on Telegram"
 function renderProductGrid(items) {
   const grid = document.getElementById('product-grid');
   document.getElementById('product-count').innerText = `${items.length} items`;
@@ -302,7 +368,6 @@ function renderProductGrid(items) {
   }).join('');
 }
 
-// Generate direct Telegram chat link
 function formatTelegramLink(contact, productTitle) {
   const cleanContact = String(contact).trim().replace('@', '');
   const message = encodeURIComponent(`Hi, I saw your listing on Nexbuy: "${productTitle}". Is it still available?`);
@@ -314,7 +379,7 @@ function formatTelegramLink(contact, productTitle) {
   return `https://t.me/${cleanContact}?text=${message}`;
 }
 
-// Handle Post Product
+// ================= POST PRODUCT HANDLER =================
 function handlePostProduct(e) {
   e.preventDefault();
 
@@ -323,12 +388,14 @@ function handlePostProduct(e) {
   const category = document.getElementById('post-category').value;
   const location = document.getElementById('post-location').value;
   let contact = document.getElementById('post-contact').value.trim();
-  let image = document.getElementById('post-image').value.trim();
   const desc = document.getElementById('post-desc').value;
 
   if (!contact.startsWith('@') && !contact.match(/^\d+$/)) {
     contact = '@' + contact;
   }
+
+  // Use uploaded phone image, or fallback to high quality category stock image
+  let image = currentUploadedImageBase64;
 
   if (!image) {
     const fallbackImages = {
@@ -356,7 +423,10 @@ function handlePostProduct(e) {
   products.unshift(newProduct);
   saveProducts();
 
+  // Reset form and upload dropzone
   document.getElementById('sell-form').reset();
+  removeSelectedImage();
+
   showToast("Listing published on UNN Marketplace!");
   switchView('home-view');
   renderProducts();
@@ -372,11 +442,9 @@ function updateProfileUI() {
   document.getElementById('prof-vendor-tier').innerText = currentUser.tier || "Free";
   document.getElementById('prof-nex-points').innerText = currentUser.points || 150;
 
-  // Filter and count current user's listings
   const myItems = products.filter(p => p.sellerId === currentUser.id);
   document.getElementById('prof-active-listings').innerText = myItems.length;
 
-  // Render My Posted Items in Profile
   const myItemsContainer = document.getElementById('user-own-listings');
   if (myItems.length === 0) {
     myItemsContainer.innerHTML = `
