@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Nexbuy Marketplace - UNN Admin & Student Hub</title>
+  <title>Nexbuy Marketplace - UNN Student Hub</title>
   
   <!-- Telegram Web App SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -39,10 +39,10 @@
       <!-- Sign In Form -->
       <form id="login-form" onsubmit="handleLogin(event)">
         <div class="input-group">
-          <label>UNN Email / Matric or Phone</label>
+          <label>UNN Email / Matric or Telegram Handle</label>
           <div class="input-box">
             <i class="fa-solid fa-user"></i>
-            <input type="text" id="login-id" placeholder="e.g. 2021/245890 or 080..." required>
+            <input type="text" id="login-id" placeholder="e.g. 2021/245890 or @username" required>
           </div>
         </div>
 
@@ -90,10 +90,10 @@
         </div>
 
         <div class="input-group">
-          <label>WhatsApp / Phone Number</label>
+          <label>Telegram Username or Phone</label>
           <div class="input-box">
-            <i class="fa-solid fa-phone"></i>
-            <input type="tel" id="reg-phone" placeholder="08123456789" required>
+            <i class="fa-brands fa-telegram"></i>
+            <input type="text" id="reg-telegram" placeholder="@chidubem_unn or 080..." required>
           </div>
         </div>
 
@@ -126,9 +126,11 @@
           <span class="badge-sub"><i class="fa-solid fa-circle-check"></i> UNN Verified</span>
         </div>
       </div>
+      
+      <!-- Header Actions: Theme Toggle + Profile Pill -->
       <div class="header-actions">
-        <button class="btn-admin-pill" onclick="promptAdminAccess()" title="Admin Control Room">
-          <i class="fa-solid fa-shield-halved"></i> <span>Admin</span>
+        <button class="theme-toggle-btn" onclick="toggleTheme()" title="Toggle Dark/Light Mode">
+          <i id="theme-icon" class="fa-solid fa-sun"></i>
         </button>
         <div class="user-pill" onclick="switchView('profile-view')">
           <i class="fa-solid fa-graduation-cap"></i>
@@ -146,7 +148,7 @@
           <div class="hero-content">
             <span class="pill-chip">UNN's #1 Student Hub</span>
             <h3>Buy. Sell. Connect around Nsukka.</h3>
-            <p>Fast, local trades right inside your hostel.</p>
+            <p>Fast, direct student-to-student deals on Telegram.</p>
           </div>
           <div class="hero-art">
             <i class="fa-solid fa-rocket float-anim"></i>
@@ -196,8 +198,8 @@
           <div id="sell-restriction-banner" class="restriction-box hidden">
             <i class="fa-solid fa-circle-exclamation"></i>
             <div>
-              <strong>Selling Restricted by Admin</strong>
-              <p>Your account is pending verification or subscription. Contact Nexbuy Support to enable sales.</p>
+              <strong>Selling Restricted</strong>
+              <p>Your seller account is awaiting verification. Contact support to activate sales.</p>
             </div>
           </div>
 
@@ -237,9 +239,10 @@
             </div>
 
             <div class="input-group">
-              <label>WhatsApp / Phone Number</label>
+              <label>Your Telegram Handle or Number (for buyers to chat)</label>
               <div class="input-box">
-                <input type="tel" id="post-contact" placeholder="08012345678" required>
+                <i class="fa-brands fa-telegram"></i>
+                <input type="text" id="post-contact" placeholder="@username or 080..." required>
               </div>
             </div>
 
@@ -289,119 +292,106 @@
         </div>
       </section>
 
-      <!-- 4. PROFILE VIEW -->
+      <!-- 4. ENHANCED USER PROFILE VIEW -->
       <section id="profile-view" class="view-panel">
-        <div class="profile-card">
-          <div class="avatar-circle">
-            <i class="fa-solid fa-user-graduate"></i>
-          </div>
-          <h3 id="prof-name">Chidubem Okeke</h3>
-          <p id="prof-hostel" class="prof-sub">Mary Slessor Hostel • UNN</p>
-          
-          <div id="prof-plan-badge" class="verified-tag">
-            <i class="fa-solid fa-shield-halved"></i> UNN Verified Student
-          </div>
-
-          <div class="profile-stats">
-            <div class="stat-box">
-              <span class="stat-num" id="user-selling-status">Allowed</span>
-              <span class="stat-lbl">Seller Status</span>
-            </div>
-            <div class="stat-box">
-              <span class="stat-num" id="user-tier-status">Free</span>
-              <span class="stat-lbl">Vendor Tier</span>
-            </div>
-            <div class="stat-box">
-              <span class="stat-num">4.9 ★</span>
-              <span class="stat-lbl">Rating</span>
-            </div>
-          </div>
-
-          <button class="btn-secondary" onclick="handleLogout()">
-            <i class="fa-solid fa-arrow-right-from-bracket"></i> Sign Out
-          </button>
-        </div>
-      </section>
-
-      <!-- 5. ADMIN CONTROL PANEL VIEW (NEW) -->
-      <section id="admin-view" class="view-panel">
-        <div class="admin-header-strip">
-          <div class="admin-tag"><i class="fa-solid fa-shield-dog"></i> SuperAdmin Hub</div>
-          <button class="btn-exit-admin" onclick="switchView('home-view')"><i class="fa-solid fa-xmark"></i> Exit</button>
-        </div>
-
-        <!-- Mini Market Monitor -->
-        <div class="monitor-wrapper">
-          <div class="monitor-top">
-            <h4><i class="fa-solid fa-chart-line"></i> UNN Market Monitor</h4>
-            <span class="pulse-live"><span class="dot"></span> Live</span>
-          </div>
-
-          <div class="metrics-grid">
-            <div class="metric-card">
-              <span class="m-label">Gross Volume (GMV)</span>
-              <h3 id="adm-metric-gmv">₦0</h3>
-              <small class="m-sub">Campus listing value</small>
-            </div>
-            <div class="metric-card highlight">
-              <span class="m-label">Monetization Earned</span>
-              <h3 id="adm-metric-revenue">₦12,500</h3>
-              <small class="m-sub">Pro tiers & ad boosts</small>
-            </div>
-            <div class="metric-card">
-              <span class="m-label">Active Listings</span>
-              <h3 id="adm-metric-listings">0</h3>
-              <small class="m-sub">Around Nsukka</small>
-            </div>
-            <div class="metric-card">
-              <span class="m-label">Verified Sellers</span>
-              <h3 id="adm-metric-sellers">0</h3>
-              <small class="m-sub">UNN verified</small>
-            </div>
-          </div>
-
-          <!-- Mini Campus Activity Bar -->
-          <div class="campus-bar-section">
-            <span class="bar-title">Market Activity by Hostel Location</span>
-            <div class="hostel-bars">
-              <div class="bar-item">
-                <span>Mary Slessor</span>
-                <div class="bar-track"><div class="bar-fill" style="width: 45%;"></div></div>
-                <span>45%</span>
+        
+        <!-- Profile Header Card -->
+        <div class="profile-card-modern">
+          <div class="profile-header-top">
+            <div class="avatar-wrapper">
+              <div class="avatar-circle">
+                <i class="fa-solid fa-user-graduate"></i>
               </div>
-              <div class="bar-item">
-                <span>Franco</span>
-                <div class="bar-track"><div class="bar-fill" style="width: 30%;"></div></div>
-                <span>30%</span>
-              </div>
-              <div class="bar-item">
-                <span>Hilltop / Off-campus</span>
-                <div class="bar-track"><div class="bar-fill" style="width: 25%;"></div></div>
-                <span>25%</span>
+              <span class="online-indicator" title="Active on Campus"></span>
+            </div>
+            <div class="profile-title-block">
+              <h3 id="prof-name">Chidubem Okeke</h3>
+              <p id="prof-hostel" class="prof-hostel-tag"><i class="fa-solid fa-location-dot"></i> Mary Slessor Hostel • UNN</p>
+              <div class="verified-badge-pill">
+                <i class="fa-solid fa-shield-halved"></i> UNN Verified Student
               </div>
             </div>
           </div>
+
+          <!-- Student Metrics -->
+          <div class="profile-metrics-grid">
+            <div class="metric-item">
+              <span class="metric-val" id="prof-active-listings">0</span>
+              <span class="metric-key">My Listings</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-val" id="prof-trust-score">100%</span>
+              <span class="metric-key">Trust Score</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-val" id="prof-nex-points">240</span>
+              <span class="metric-key">NexPoints</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-val" id="prof-vendor-tier">Free</span>
+              <span class="metric-key">Account Tier</span>
+            </div>
+          </div>
+
+          <!-- Account Details Box -->
+          <div class="account-details-box">
+            <div class="detail-row">
+              <span><i class="fa-brands fa-telegram"></i> Telegram Contact:</span>
+              <strong id="prof-tg-handle">@username</strong>
+            </div>
+            <div class="detail-row">
+              <span><i class="fa-solid fa-bolt"></i> Selling Status:</span>
+              <strong id="prof-sell-status" class="status-active">Active (Permitted)</strong>
+            </div>
+          </div>
         </div>
 
-        <!-- Student Users & Monetization Management -->
-        <div class="admin-section">
-          <div class="admin-section-head">
-            <h4><i class="fa-solid fa-users-gear"></i> Manage Sellers & Monetization</h4>
+        <!-- My Active Listings Section -->
+        <div class="profile-section-block">
+          <div class="section-title">
+            <h4><i class="fa-solid fa-box-archive"></i> My Posted Items</h4>
+            <button class="btn-mini-link" onclick="switchView('sell-view')">+ Post New</button>
           </div>
-          <div id="admin-users-list" class="admin-users-list">
-            <!-- User rows injected by JS -->
+          <div id="user-own-listings" class="user-own-listings">
+            <!-- User's own items dynamically populated -->
           </div>
         </div>
 
-        <!-- Listing Moderation Feed -->
-        <div class="admin-section">
-          <div class="admin-section-head">
-            <h4><i class="fa-solid fa-boxes-stacked"></i> Moderate Products</h4>
+        <!-- Profile Settings & Quick Controls -->
+        <div class="profile-section-block">
+          <div class="section-title">
+            <h4><i class="fa-solid fa-gear"></i> Preferences</h4>
           </div>
-          <div id="admin-listings-list" class="admin-listings-list">
-            <!-- Listing cards injected by JS -->
+          <div class="settings-list">
+            <div class="setting-item" onclick="toggleTheme()">
+              <div class="setting-left">
+                <i class="fa-solid fa-circle-half-stroke"></i>
+                <span>Switch Theme Mode</span>
+              </div>
+              <span id="theme-mode-label" class="setting-badge">Dark</span>
+            </div>
+            <div class="setting-item" onclick="showToast('Campus Escrow Protection Active.')">
+              <div class="setting-left">
+                <i class="fa-solid fa-lock"></i>
+                <span>Buyer & Seller Protection</span>
+              </div>
+              <span class="setting-badge active-badge">Enabled</span>
+            </div>
+            <div class="setting-item" onclick="showToast('Support: @nexbuy_unn_help')">
+              <div class="setting-left">
+                <i class="fa-solid fa-headset"></i>
+                <span>Nexbuy UNN Support</span>
+              </div>
+              <i class="fa-solid fa-chevron-right chevron"></i>
+            </div>
           </div>
         </div>
+
+        <!-- Sign Out Button -->
+        <button class="btn-secondary" onclick="handleLogout()">
+          <i class="fa-solid fa-arrow-right-from-bracket"></i> Sign Out of Nexbuy
+        </button>
+
       </section>
 
     </main>
