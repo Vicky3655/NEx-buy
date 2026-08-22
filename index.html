@@ -10,7 +10,7 @@
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
   <!-- FontAwesome Icons -->
@@ -186,12 +186,12 @@
         </div>
       </section>
 
-      <!-- 2. SELL / POST PRODUCT VIEW -->
+      <!-- 2. UPGRADED SELL / POST PRODUCT VIEW WITH PHONE UPLOAD -->
       <section id="sell-view" class="view-panel">
         <div class="form-container">
           <div class="panel-header">
             <h3>Post Your Product</h3>
-            <p>Reach thousands of UNN & Nsukka students instantly.</p>
+            <p>Upload directly from your phone to UNN students.</p>
           </div>
 
           <!-- Permission status banner (shown when user is restricted) -->
@@ -204,6 +204,36 @@
           </div>
 
           <form id="sell-form" onsubmit="handlePostProduct(event)">
+            
+            <!-- PHONE PHOTO UPLOAD DROPZONE -->
+            <div class="input-group">
+              <label>Product Photo <span class="req">*</span></label>
+              
+              <div class="upload-dropzone" id="upload-dropzone" onclick="document.getElementById('post-file-input').click()">
+                <!-- Hidden Native File Input -->
+                <input type="file" id="post-file-input" accept="image/*" class="hidden-file-input" onchange="handleImageSelect(event)">
+                
+                <!-- Upload Placeholder State -->
+                <div id="upload-placeholder" class="upload-placeholder">
+                  <div class="upload-icon-circle">
+                    <i class="fa-solid fa-camera"></i>
+                  </div>
+                  <strong>Upload from Phone / Gallery</strong>
+                  <span>Tap to choose an image or take a photo</span>
+                </div>
+
+                <!-- Selected Image Preview State -->
+                <div id="image-preview-container" class="image-preview-container hidden">
+                  <img id="image-preview" src="" alt="Selected Product Preview">
+                  <button type="button" class="btn-remove-preview" onclick="removeSelectedImage(event)" title="Remove photo">
+                    <i class="fa-solid fa-trash-can"></i>
+                  </button>
+                  <span class="preview-badge"><i class="fa-solid fa-circle-check"></i> Photo Ready</span>
+                </div>
+              </div>
+              <small class="hint">Images are automatically optimized for fast campus browsing.</small>
+            </div>
+
             <div class="input-group">
               <label>Product Title</label>
               <div class="input-box">
@@ -247,15 +277,7 @@
             </div>
 
             <div class="input-group">
-              <label>Product Image Link (Optional)</label>
-              <div class="input-box">
-                <input type="url" id="post-image" placeholder="https://images.unsplash.com/...">
-              </div>
-              <small class="hint">Leave empty to use high-quality campus stock image.</small>
-            </div>
-
-            <div class="input-group">
-              <label>Description</label>
+              <label>Description (Optional)</label>
               <textarea id="post-desc" rows="3" placeholder="Condition of item, reason for selling, negotiable or fixed..."></textarea>
             </div>
 
@@ -292,10 +314,8 @@
         </div>
       </section>
 
-      <!-- 4. ENHANCED USER PROFILE VIEW -->
+      <!-- 4. USER PROFILE VIEW -->
       <section id="profile-view" class="view-panel">
-        
-        <!-- Profile Header Card -->
         <div class="profile-card-modern">
           <div class="profile-header-top">
             <div class="avatar-wrapper">
@@ -313,7 +333,6 @@
             </div>
           </div>
 
-          <!-- Student Metrics -->
           <div class="profile-metrics-grid">
             <div class="metric-item">
               <span class="metric-val" id="prof-active-listings">0</span>
@@ -333,7 +352,6 @@
             </div>
           </div>
 
-          <!-- Account Details Box -->
           <div class="account-details-box">
             <div class="detail-row">
               <span><i class="fa-brands fa-telegram"></i> Telegram Contact:</span>
@@ -346,18 +364,16 @@
           </div>
         </div>
 
-        <!-- My Active Listings Section -->
         <div class="profile-section-block">
           <div class="section-title">
             <h4><i class="fa-solid fa-box-archive"></i> My Posted Items</h4>
             <button class="btn-mini-link" onclick="switchView('sell-view')">+ Post New</button>
           </div>
           <div id="user-own-listings" class="user-own-listings">
-            <!-- User's own items dynamically populated -->
+            <!-- User's items -->
           </div>
         </div>
 
-        <!-- Profile Settings & Quick Controls -->
         <div class="profile-section-block">
           <div class="section-title">
             <h4><i class="fa-solid fa-gear"></i> Preferences</h4>
@@ -387,11 +403,9 @@
           </div>
         </div>
 
-        <!-- Sign Out Button -->
         <button class="btn-secondary" onclick="handleLogout()">
           <i class="fa-solid fa-arrow-right-from-bracket"></i> Sign Out of Nexbuy
         </button>
-
       </section>
 
     </main>
