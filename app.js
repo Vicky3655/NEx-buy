@@ -7,41 +7,7 @@ if (window.Telegram && window.Telegram.WebApp) {
   if (tg.setBackgroundColor) tg.setBackgroundColor('#0f051d');
 }
 
-// Admin Passcode (Default for UNN Admin is 1960 or admin123)
-const ADMIN_PASSCODE = "1960";
-
-// Mock Registered UNN Users Database
-const initialUsers = [
-  {
-    id: "usr_1",
-    name: "Chidubem Okeke",
-    location: "Mary Slessor Hostel",
-    phone: "08123456789",
-    canSell: true,
-    isMonetized: true, // Pro Vendor Tier
-    tier: "Pro Vendor (₦2,500/mo)"
-  },
-  {
-    id: "usr_2",
-    name: "Emeka Alozie",
-    location: "Franco Hostel",
-    phone: "08087654321",
-    canSell: true,
-    isMonetized: false,
-    tier: "Free Student"
-  },
-  {
-    id: "usr_3",
-    name: "Ngozi Eze",
-    location: "Nkrumah Hostel",
-    phone: "09011223344",
-    canSell: false, // Restricted by admin
-    isMonetized: false,
-    tier: "Restricted"
-  }
-];
-
-// Initial Listings Database
+// Initial Sample UNN Listings
 const defaultProducts = [
   {
     id: 1,
@@ -50,7 +16,7 @@ const defaultProducts = [
     price: 3500,
     category: "Academics",
     location: "Mary Slessor Hostel",
-    contact: "08123456789",
+    contact: "@chidubem_unn",
     image: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&q=80",
     desc: "Complete first year package with summarized past questions.",
     boosted: true
@@ -62,7 +28,7 @@ const defaultProducts = [
     price: 185000,
     category: "Gadgets",
     location: "Franco Hostel",
-    contact: "08087654321",
+    contact: "@emeka_tech",
     image: "https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=400&q=80",
     desc: "Battery health is good. Suitable for coding and assignments.",
     boosted: false
@@ -74,26 +40,64 @@ const defaultProducts = [
     price: 7000,
     category: "Fashion",
     location: "Nkrumah Hostel",
-    contact: "09011223344",
+    contact: "@ngozi_unn",
     image: "https://images.unsplash.com/photo-1576995853123-5a10305d93c0?w=400&q=80",
     desc: "Oversized, UNN campus style.",
     boosted: false
   }
 ];
 
-// Persistent State
-let users = JSON.parse(localStorage.getItem('nexbuy_users')) || initialUsers;
+// Persistent App State
 let products = JSON.parse(localStorage.getItem('nexbuy_products')) || defaultProducts;
 let currentCategory = 'All';
 let currentUser = JSON.parse(localStorage.getItem('nexbuy_user')) || null;
+let isLightMode = localStorage.getItem('nexbuy_theme') === 'light';
 
 // Initialize App
 document.addEventListener('DOMContentLoaded', () => {
+  initTheme();
   if (currentUser) {
     showMainApp();
   }
   renderProducts();
 });
+
+// ================= THEME TOGGLE (DARK / LIGHT) =================
+function initTheme() {
+  if (isLightMode) {
+    document.body.classList.add('light-mode');
+    updateThemeIcon(true);
+  } else {
+    document.body.classList.remove('light-mode');
+    updateThemeIcon(false);
+  }
+}
+
+function toggleTheme() {
+  isLightMode = !isLightMode;
+  if (isLightMode) {
+    document.body.classList.add('light-mode');
+    localStorage.setItem('nexbuy_theme', 'light');
+    updateThemeIcon(true);
+    showToast("Switched to Light Theme");
+  } else {
+    document.body.classList.remove('light-mode');
+    localStorage.setItem('nexbuy_theme', 'dark');
+    updateThemeIcon(false);
+    showToast("Switched to Dark Theme");
+  }
+}
+
+function updateThemeIcon(isLight) {
+  const icon = document.getElementById('theme-icon');
+  const label = document.getElementById('theme-mode-label');
+  if (icon) {
+    icon.className = isLight ? "fa-solid fa-moon" : "fa-solid fa-sun";
+  }
+  if (label) {
+    label.innerText = isLight ? "Light Mode" : "Dark Mode";
+  }
+}
 
 // ================= AUTH CONTROLLERS =================
 function switchAuthTab(type) {
@@ -118,27 +122,19 @@ function switchAuthTab(type) {
 function handleLogin(e) {
   e.preventDefault();
   const loginId = document.getElementById('login-id').value;
-  
-  // Find or create current active session
-  let matched = users.find(u => u.phone.includes(loginId) || u.name.toLowerCase().includes(loginId.toLowerCase()));
-  
-  if (!matched) {
-    matched = {
-      id: "usr_" + Date.now(),
-      name: loginId.includes('@') ? loginId.split('@')[0] : "UNN Student",
-      location: "Mary Slessor Hostel",
-      phone: "080" + Math.floor(10000000 + Math.random() * 90000000),
-      canSell: true,
-      isMonetized: false,
-      tier: "Free Student"
-    };
-    users.push(matched);
-    saveUsers();
-  }
 
-  currentUser = matched;
+  currentUser = {
+    id: "usr_" + Date.now(),
+    name: loginId.startsWith('@') ? loginId.replace('@', '') : "UNN Lion",
+    location: "Mary Slessor Hostel",
+    telegram: loginId.startsWith('@') ? loginId : `@${loginId.replace(/\s+/g, '_')}`,
+    canSell: true,
+    tier: "Free Student",
+    points: 240
+  };
+
   localStorage.setItem('nexbuy_user', JSON.stringify(currentUser));
-  showToast("Welcome back to Nexbuy UNN!");
+  showToast("Welcome to Nexbuy UNN!");
   showMainApp();
 }
 
@@ -146,50 +142,49 @@ function handleRegister(e) {
   e.preventDefault();
   const name = document.getElementById('reg-name').value;
   const location = document.getElementById('reg-location').value;
-  const phone = document.getElementById('reg-phone').value;
+  let telegram = document.getElementById('reg-telegram').value.trim();
 
-  const newUser = {
+  if (!telegram.startsWith('@') && !telegram.match(/^\d+$/)) {
+    telegram = '@' + telegram;
+  }
+
+  currentUser = {
     id: "usr_" + Date.now(),
     name,
     location,
-    phone,
-    canSell: true, // Default enabled
-    isMonetized: false,
-    tier: "Free Student"
+    telegram,
+    canSell: true,
+    tier: "Free Student",
+    points: 100
   };
 
-  users.push(newUser);
-  saveUsers();
-
-  currentUser = newUser;
   localStorage.setItem('nexbuy_user', JSON.stringify(currentUser));
-  showToast("UNN Student Account Created!");
+  showToast("UNN Account Created!");
   showMainApp();
 }
 
 function handleTelegramQuickAuth() {
-  let tgName = "UNN Lion Scholar";
-  let tgPhone = "08199283741";
+  let tgName = "UNN Scholar";
+  let tgHandle = "@unn_lion";
 
   if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe?.user) {
     const tgUser = window.Telegram.WebApp.initDataUnsafe.user;
     tgName = `${tgUser.first_name} ${tgUser.last_name || ''}`.trim();
+    tgHandle = tgUser.username ? `@${tgUser.username}` : `@user_${tgUser.id}`;
   }
 
   currentUser = {
     id: "usr_tg_" + Date.now(),
     name: tgName,
     location: "Franco / Mary Slessor",
-    phone: tgPhone,
+    telegram: tgHandle,
     canSell: true,
-    isMonetized: false,
-    tier: "Free Student"
+    tier: "Free Student",
+    points: 150
   };
 
-  users.push(currentUser);
-  saveUsers();
   localStorage.setItem('nexbuy_user', JSON.stringify(currentUser));
-  showToast("Connected via Telegram!");
+  showToast("Logged in via Telegram!");
   showMainApp();
 }
 
@@ -198,18 +193,8 @@ function showMainApp() {
   document.getElementById('main-app').classList.remove('hidden');
   
   if (currentUser) {
-    // Sync session with users DB
-    const freshData = users.find(u => u.id === currentUser.id);
-    if (freshData) currentUser = freshData;
-
     document.getElementById('nav-user-name').innerText = currentUser.name.split(' ')[0];
-    document.getElementById('prof-name').innerText = currentUser.name;
-    document.getElementById('prof-hostel').innerText = `${currentUser.location} • UNN`;
-    document.getElementById('user-selling-status').innerText = currentUser.canSell ? "Allowed" : "Suspended";
-    document.getElementById('user-tier-status').innerText = currentUser.isMonetized ? "Pro VIP" : "Free";
-    
-    // Update Sell view form state based on permission
-    updateSellerPermissionUI();
+    updateProfileUI();
   }
 }
 
@@ -245,34 +230,11 @@ function switchView(viewId) {
     items[navMap[viewId]].classList.add('active');
   }
 
-  if (viewId === 'admin-view') {
-    renderAdminDashboard();
-  }
-
-  if (viewId === 'sell-view') {
-    updateSellerPermissionUI();
+  if (viewId === 'profile-view') {
+    updateProfileUI();
   }
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-// Check seller permission status
-function updateSellerPermissionUI() {
-  const isAllowed = currentUser ? currentUser.canSell : true;
-  const restrictionBanner = document.getElementById('sell-restriction-banner');
-  const postSubmitBtn = document.getElementById('post-submit-btn');
-
-  if (!isAllowed) {
-    restrictionBanner.classList.remove('hidden');
-    postSubmitBtn.disabled = true;
-    postSubmitBtn.style.opacity = '0.5';
-    postSubmitBtn.style.cursor = 'not-allowed';
-  } else {
-    restrictionBanner.classList.add('hidden');
-    postSubmitBtn.disabled = false;
-    postSubmitBtn.style.opacity = '1';
-    postSubmitBtn.style.cursor = 'pointer';
-  }
 }
 
 // ================= MARKETPLACE CONTROLLERS =================
@@ -302,6 +264,7 @@ function renderProducts() {
   renderProductGrid(products);
 }
 
+// Render Products with "Chat on Telegram"
 function renderProductGrid(items) {
   const grid = document.getElementById('product-grid');
   document.getElementById('product-count').innerText = `${items.length} items`;
@@ -315,42 +278,57 @@ function renderProductGrid(items) {
     return;
   }
 
-  grid.innerHTML = items.map(product => `
-    <div class="product-card ${product.boosted ? 'boosted' : ''}">
-      ${product.boosted ? `<span class="boost-tag"><i class="fa-solid fa-bolt"></i> Boosted</span>` : ''}
-      <img src="${product.image}" alt="${product.title}" class="product-img" onerror="this.src='https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&q=80'">
-      <div class="product-info">
-        <span class="product-category-tag">${product.category}</span>
-        <h5 class="product-title" title="${product.title}">${product.title}</h5>
-        <div class="product-loc">
-          <i class="fa-solid fa-location-dot"></i>
-          <span>${product.location}</span>
+  grid.innerHTML = items.map(product => {
+    const tgLink = formatTelegramLink(product.contact, product.title);
+
+    return `
+      <div class="product-card ${product.boosted ? 'boosted' : ''}">
+        ${product.boosted ? `<span class="boost-tag"><i class="fa-solid fa-bolt"></i> Boosted</span>` : ''}
+        <img src="${product.image}" alt="${product.title}" class="product-img" onerror="this.src='https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&q=80'">
+        <div class="product-info">
+          <span class="product-category-tag">${product.category}</span>
+          <h5 class="product-title" title="${product.title}">${product.title}</h5>
+          <div class="product-loc">
+            <i class="fa-solid fa-location-dot"></i>
+            <span>${product.location}</span>
+          </div>
+          <div class="product-price">₦${Number(product.price).toLocaleString()}</div>
+          <a href="${tgLink}" target="_blank" class="btn-contact">
+            <i class="fa-brands fa-telegram"></i> Chat on Telegram
+          </a>
         </div>
-        <div class="product-price">₦${Number(product.price).toLocaleString()}</div>
-        <a href="https://wa.me/234${formatPhone(product.contact)}?text=Hi,%20I%20am%20interested%20in%20your%20listing%20on%20Nexbuy:%20${encodeURIComponent(product.title)}" 
-           target="_blank" class="btn-contact">
-          <i class="fa-brands fa-whatsapp"></i> Chat Seller
-        </a>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
+// Generate direct Telegram chat link
+function formatTelegramLink(contact, productTitle) {
+  const cleanContact = String(contact).trim().replace('@', '');
+  const message = encodeURIComponent(`Hi, I saw your listing on Nexbuy: "${productTitle}". Is it still available?`);
+  
+  if (cleanContact.startsWith('0') || cleanContact.startsWith('234') || cleanContact.startsWith('+')) {
+    const phone = cleanContact.replace(/\D/g, '').replace(/^0/, '234');
+    return `https://t.me/+${phone}`;
+  }
+  return `https://t.me/${cleanContact}?text=${message}`;
+}
+
+// Handle Post Product
 function handlePostProduct(e) {
   e.preventDefault();
-
-  if (currentUser && !currentUser.canSell) {
-    showToast("Error: Your selling permission is disabled by Admin.");
-    return;
-  }
 
   const title = document.getElementById('post-title').value;
   const price = document.getElementById('post-price').value;
   const category = document.getElementById('post-category').value;
   const location = document.getElementById('post-location').value;
-  const contact = document.getElementById('post-contact').value;
+  let contact = document.getElementById('post-contact').value.trim();
   let image = document.getElementById('post-image').value.trim();
   const desc = document.getElementById('post-desc').value;
+
+  if (!contact.startsWith('@') && !contact.match(/^\d+$/)) {
+    contact = '@' + contact;
+  }
 
   if (!image) {
     const fallbackImages = {
@@ -372,7 +350,7 @@ function handlePostProduct(e) {
     contact,
     image,
     desc,
-    boosted: currentUser ? currentUser.isMonetized : false
+    boosted: false
   };
 
   products.unshift(newProduct);
@@ -384,140 +362,58 @@ function handlePostProduct(e) {
   renderProducts();
 }
 
-// ================= ADMIN DASHBOARD & MONITOR LOGIC =================
-function promptAdminAccess() {
-  const pin = prompt("Enter SuperAdmin Access PIN (Default PIN: 1960):");
-  if (pin === ADMIN_PASSCODE) {
-    showToast("Access Granted. Welcome Admin!");
-    switchView('admin-view');
-  } else if (pin !== null) {
-    showToast("Incorrect Admin PIN.");
-  }
-}
+// ================= ENHANCED PROFILE CONTROLLER =================
+function updateProfileUI() {
+  if (!currentUser) return;
 
-function renderAdminDashboard() {
-  // 1. Calculate Mini Market Monitor Metrics
-  const totalGMV = products.reduce((acc, p) => acc + Number(p.price || 0), 0);
-  const activeSellersCount = users.filter(u => u.canSell).length;
-  const monetizedVendorsCount = users.filter(u => u.isMonetized).length;
-  const platformRevenue = (monetizedVendorsCount * 2500) + (products.filter(p => p.boosted).length * 500);
+  document.getElementById('prof-name').innerText = currentUser.name;
+  document.getElementById('prof-hostel').innerHTML = `<i class="fa-solid fa-location-dot"></i> ${currentUser.location} • UNN`;
+  document.getElementById('prof-tg-handle').innerText = currentUser.telegram || "@unn_student";
+  document.getElementById('prof-vendor-tier').innerText = currentUser.tier || "Free";
+  document.getElementById('prof-nex-points').innerText = currentUser.points || 150;
 
-  document.getElementById('adm-metric-gmv').innerText = `₦${totalGMV.toLocaleString()}`;
-  document.getElementById('adm-metric-revenue').innerText = `₦${platformRevenue.toLocaleString()}`;
-  document.getElementById('adm-metric-listings').innerText = products.length;
-  document.getElementById('adm-metric-sellers').innerText = activeSellersCount;
+  // Filter and count current user's listings
+  const myItems = products.filter(p => p.sellerId === currentUser.id);
+  document.getElementById('prof-active-listings').innerText = myItems.length;
 
-  // 2. Render Users with Selling & Monetization Controls
-  const usersListContainer = document.getElementById('admin-users-list');
-  usersListContainer.innerHTML = users.map(user => `
-    <div class="user-admin-card">
-      <div class="user-row-top">
-        <div class="user-info-meta">
-          <strong>${user.name}</strong>
-          <span>${user.location} • ${user.phone}</span>
+  // Render My Posted Items in Profile
+  const myItemsContainer = document.getElementById('user-own-listings');
+  if (myItems.length === 0) {
+    myItemsContainer.innerHTML = `
+      <div style="text-align: center; padding: 18px; color: var(--text-muted); font-size: 12px; background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-glass);">
+        You haven't posted any products yet.
+      </div>`;
+  } else {
+    myItemsContainer.innerHTML = myItems.map(item => `
+      <div class="own-item-card">
+        <div class="own-item-info">
+          <img src="${item.image}" alt="${item.title}" class="own-item-thumb">
+          <div>
+            <strong>${item.title}</strong>
+            <span>₦${Number(item.price).toLocaleString()} • ${item.category}</span>
+          </div>
         </div>
-        <span class="badge-sub" style="color: ${user.isMonetized ? '#00f0ff' : '#b8a9cf'}">
-          ${user.tier}
-        </span>
-      </div>
-
-      <div class="user-admin-actions">
-        <!-- Permission Toggle: Grant / Revoke Selling -->
-        <button class="btn-pill-toggle ${user.canSell ? 'enabled' : 'disabled'}" 
-                onclick="toggleUserSellingPermission('${user.id}')">
-          <i class="fa-solid ${user.canSell ? 'fa-check' : 'fa-ban'}"></i>
-          <span>${user.canSell ? 'Sell Allowed' : 'Sell Blocked'}</span>
-        </button>
-
-        <!-- Monetization Button: Assign Pro Vendor Tier -->
-        <button class="btn-monetize ${user.isMonetized ? 'pro' : ''}" 
-                onclick="toggleUserMonetization('${user.id}')">
-          <i class="fa-solid fa-gem"></i>
-          <span>${user.isMonetized ? 'Pro Vendor (₦2.5k)' : 'Upgrade to Pro'}</span>
+        <button class="btn-delete-own" onclick="deleteMyProduct(${item.id})">
+          <i class="fa-solid fa-trash"></i>
         </button>
       </div>
-    </div>
-  `).join('');
-
-  // 3. Render Product Moderation Feed
-  const listingsContainer = document.getElementById('admin-listings-list');
-  listingsContainer.innerHTML = products.map(item => `
-    <div class="listing-admin-card">
-      <div class="user-row-top">
-        <div class="user-info-meta">
-          <strong>${item.title}</strong>
-          <span>₦${Number(item.price).toLocaleString()} • ${item.location}</span>
-        </div>
-        <div style="display: flex; gap: 6px;">
-          <button class="btn-outline-sm" style="margin:0; padding:4px 8px;" onclick="toggleBoostListing(${item.id})">
-            <i class="fa-solid fa-bolt"></i> ${item.boosted ? 'Unboost' : 'Boost (₦500)'}
-          </button>
-          <button class="btn-del-listing" onclick="adminDeleteProduct(${item.id})">
-            <i class="fa-solid fa-trash"></i>
-          </button>
-        </div>
-      </div>
-    </div>
-  `).join('');
-}
-
-// Admin Action: Grant / Revoke Selling Permission
-function toggleUserSellingPermission(userId) {
-  const user = users.find(u => u.id === userId);
-  if (user) {
-    user.canSell = !user.canSell;
-    saveUsers();
-    renderAdminDashboard();
-    showToast(`Selling permission for ${user.name} is now ${user.canSell ? 'ENABLED' : 'DISABLED'}.`);
+    `).join('');
   }
 }
 
-// Admin Action: Monetize / Upgrade User
-function toggleUserMonetization(userId) {
-  const user = users.find(u => u.id === userId);
-  if (user) {
-    user.isMonetized = !user.isMonetized;
-    user.tier = user.isMonetized ? "Pro Vendor (₦2,500/mo)" : "Free Student";
-    saveUsers();
-    renderAdminDashboard();
-    showToast(`${user.name} status updated to: ${user.tier}`);
-  }
-}
-
-// Admin Action: Moderate / Delete Listing
-function adminDeleteProduct(productId) {
-  if (confirm("Are you sure you want to remove this listing from UNN marketplace?")) {
-    products = products.filter(p => p.id !== productId);
+function deleteMyProduct(id) {
+  if (confirm("Do you want to delete this listing?")) {
+    products = products.filter(p => p.id !== id);
     saveProducts();
-    renderAdminDashboard();
+    updateProfileUI();
     renderProducts();
-    showToast("Listing removed by Admin.");
-  }
-}
-
-// Admin Action: Toggle Featured / Boosted Listing
-function toggleBoostListing(productId) {
-  const product = products.find(p => p.id === productId);
-  if (product) {
-    product.boosted = !product.boosted;
-    saveProducts();
-    renderAdminDashboard();
-    renderProducts();
-    showToast(`Listing ${product.boosted ? 'BOOSTED' : 'UNBOOSTED'}.`);
+    showToast("Listing deleted.");
   }
 }
 
 // ================= STORAGE HELPERS =================
-function saveUsers() {
-  localStorage.setItem('nexbuy_users', JSON.stringify(users));
-}
-
 function saveProducts() {
   localStorage.setItem('nexbuy_products', JSON.stringify(products));
-}
-
-function formatPhone(phone) {
-  return String(phone).replace(/^0/, '').replace(/\D/g, '');
 }
 
 function showToast(text) {
