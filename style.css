@@ -158,6 +158,10 @@ body {
   margin-bottom: 6px;
 }
 
+.input-group label .req {
+  color: var(--neon-magenta);
+}
+
 .input-box {
   display: flex;
   align-items: center;
@@ -246,6 +250,114 @@ textarea {
   cursor: pointer;
 }
 
+/* ================= 📸 UPGRADED IMAGE UPLOAD DROPZONE ================= */
+.hidden-file-input {
+  display: none;
+}
+
+.upload-dropzone {
+  background: rgba(121, 40, 202, 0.07);
+  border: 2px dashed rgba(224, 36, 195, 0.4);
+  border-radius: var(--radius-md);
+  padding: 20px 14px;
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.25s ease;
+}
+
+.upload-dropzone:hover, .upload-dropzone:active {
+  border-color: var(--neon-magenta);
+  background: rgba(121, 40, 202, 0.14);
+}
+
+.upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.upload-icon-circle {
+  width: 50px;
+  height: 50px;
+  background: var(--gradient-main);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  color: #fff;
+  margin-bottom: 4px;
+  box-shadow: 0 4px 15px rgba(224, 36, 195, 0.4);
+}
+
+.upload-placeholder strong {
+  font-size: 13px;
+  color: var(--text-white);
+}
+
+.upload-placeholder span {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Image Preview Box */
+.image-preview-container {
+  position: relative;
+  width: 100%;
+  height: 190px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.image-preview-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+.btn-remove-preview {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  background: rgba(239, 68, 68, 0.85);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+  z-index: 10;
+  transition: transform 0.2s;
+}
+
+.btn-remove-preview:hover {
+  transform: scale(1.1);
+  background: var(--neon-red);
+}
+
+.preview-badge {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  background: rgba(15, 5, 29, 0.8);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--neon-green);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 14px;
+}
+
 /* ================= MAIN APP HEADER ================= */
 .top-nav {
   padding: 14px 18px;
@@ -291,7 +403,6 @@ textarea {
   gap: 8px;
 }
 
-/* Theme Toggle Button */
 .theme-toggle-btn {
   background: rgba(121, 40, 202, 0.12);
   border: 1px solid var(--border-glass);
@@ -505,7 +616,7 @@ textarea {
 
 .product-img {
   width: 100%;
-  height: 120px;
+  height: 125px;
   object-fit: cover;
   background: #110522;
 }
@@ -550,7 +661,6 @@ textarea {
   margin-top: auto;
 }
 
-/* Chat on Telegram Button */
 .btn-contact {
   margin-top: 8px;
   background: var(--tg-blue);
@@ -583,7 +693,7 @@ textarea {
   margin-bottom: 14px;
 }
 
-/* ================= IMPROVED PROFILE UI ================= */
+/* ================= PROFILE STYLES ================= */
 .profile-card-modern {
   background: var(--bg-card);
   border: 1px solid var(--border-glass);
@@ -652,7 +762,6 @@ textarea {
   font-weight: 700;
 }
 
-/* 4-Stat Grid */
 .profile-metrics-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -704,7 +813,6 @@ textarea {
   color: var(--neon-green) !important;
 }
 
-/* Profile Block Sections */
 .profile-section-block {
   margin-bottom: 18px;
 }
@@ -768,7 +876,6 @@ textarea {
   cursor: pointer;
 }
 
-/* Settings List */
 .settings-list {
   background: var(--bg-card);
   border: 1px solid var(--border-glass);
