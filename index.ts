@@ -27,8 +27,8 @@
 
 import { withSupabase } from 'npm:@supabase/server@^1'
 
-const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN') ?? ''
-const JWT_SECRET = Deno.env.get('SUPABASE_JWT_SECRET') ?? ''
+const TELEGRAM_BOT_TOKEN = Deno.env.get('8460605607:AAHuNKbdp03PeM-Ftwl9rREyTeQMjNb9xHE') ?? ''
+const JWT_SECRET = Deno.env.get('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRhcnRvYXN5aWZ3eGdmZ2Z1cmVwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDQwNDM4NywiZXhwIjoyMDk5OTgwMzg3fQ.XBZo4zdhWXnGgVLk1XLZRN7t4VxEPXXQWXmppfOrO3U') ?? ''
 
 // initData is reissued by Telegram every time the Mini App is opened, so
 // this only needs to be generous enough to cover slow networks/clock skew.
