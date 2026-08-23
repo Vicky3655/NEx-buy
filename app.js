@@ -76,7 +76,7 @@ let currentUploadedImageBase64 = null;
 
 // TODO: replace with your project's own values (Project Settings -> API)
 const SUPABASE_URL = "https://tartoasyifwxgfgfurep.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_iJ_4HGUtGWLoNXxxJCqV3g_1Wy771FS";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRhcnRvYXN5aWZ3eGdmZ2Z1cmVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ0MDQzODcsImV4cCI6MjA5OTk4MDM4N30.TUjeSDs0zCCPiPtGjOBxghjOIyZfkga8nLoV39Fbj6k";
 
 let sbClient = null;          // set once the Supabase SDK has loaded
 let cachedToken = null;       // the current signed-in JWT
