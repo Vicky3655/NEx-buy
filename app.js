@@ -296,12 +296,28 @@ function renderLocationSetup(profile) {
           </select>
         </div>
       </div>
+      <div id="location-setup-error" class="hidden"></div>
       <button type="submit" class="btn-primary">
         <span>Continue to Nexbuy</span><i class="fa-solid fa-arrow-right"></i>
       </button>
     </form>
   `;
   document.getElementById('location-setup-form').addEventListener('submit', handleLocationSetup);
+}
+
+function showLocationSetupError(message) {
+  const el = document.getElementById('location-setup-error');
+  if (!el) return;
+  el.classList.remove('hidden');
+  el.innerHTML = `
+    <div class="restriction-box" style="margin-bottom:14px;">
+      <i class="fa-solid fa-triangle-exclamation"></i>
+      <div>
+        <strong>Couldn't save</strong>
+        <p>${message}</p>
+      </div>
+    </div>
+  `;
 }
 
 async function handleLocationSetup(e) {
@@ -317,7 +333,7 @@ async function handleLocationSetup(e) {
     showMainApp();
   } catch (err) {
     console.error(err);
-    showToast("Couldn't save that, please try again.");
+    showLocationSetupError(err && err.message ? err.message : 'Please try again.');
     if (submitBtn) submitBtn.disabled = false;
   }
 }
