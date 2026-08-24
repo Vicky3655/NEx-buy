@@ -3,7 +3,7 @@ if (window.Telegram && window.Telegram.WebApp) {
   const tg = window.Telegram.WebApp;
   tg.ready();
   tg.expand();
-  if (tg.setHeaderColor) tg.setHeaderColor('#0f051d');
+  if (tg.setHeaderColo r) tg.setHeaderColor('#0f051d');
   if (tg.setBackgroundColor) tg.setBackgroundColor('#0f051d');
 }
 
