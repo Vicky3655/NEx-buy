@@ -464,9 +464,13 @@ function handleImageSelect(event) {
       currentUploadedImageBase64 = canvas.toDataURL('image/jpeg', 0.75);
 
       // Display Preview & Hide Placeholder
-      document.getElementById('image-preview').src = currentUploadedImageBase64;
-      document.getElementById('upload-placeholder').classList.add('hidden');
-      document.getElementById('image-preview-container').classList.remove('hidden');
+      const preview = document.getElementById('image-preview');
+      const placeholder = document.getElementById('upload-placeholder');
+      const previewContainer = document.getElementById('image-preview-container');
+
+      if (preview) preview.src = currentUploadedImageBase64;
+      if (placeholder) placeholder.classList.add('hidden');
+      if (previewContainer) previewContainer.classList.remove('hidden');
       showToast("Photo attached successfully!");
     };
   };
@@ -477,10 +481,16 @@ function handleImageSelect(event) {
 function removeSelectedImage(event) {
   if (event) event.stopPropagation(); // Prevents re-opening the file dialog
   currentUploadedImageBase64 = null;
-  document.getElementById('post-file-input').value = "";
-  document.getElementById('image-preview').src = "";
-  document.getElementById('image-preview-container').classList.add('hidden');
-  document.getElementById('upload-placeholder').classList.remove('hidden');
+
+  const fileInput = document.getElementById('post-file-input');
+  const preview = document.getElementById('image-preview');
+  const previewContainer = document.getElementById('image-preview-container');
+  const placeholder = document.getElementById('upload-placeholder');
+
+  if (fileInput) fileInput.value = "";
+  if (preview) preview.src = "";
+  if (previewContainer) previewContainer.classList.add('hidden');
+  if (placeholder) placeholder.classList.remove('hidden');
 }
 
 // ================= MARKETPLACE CONTROLLERS =================
@@ -500,7 +510,9 @@ function getDisplayProducts() {
   const safeListings = myListings.filter(p => p && p.id);
   const approvedIds = new Set(safeProducts.map(p => p.id));
   const myPending = currentUser
-    ? safeListings.filter(p => !p.approved && !approvedIds.has(p.id))
+    ? safeListings
+        .filter(p => !p.approved && !approvedIds.has(p.id))
+        .map(p => ({ ...p, __isOwnPending: true }))
     : [];
   return [...myPending, ...safeProducts];
 }
@@ -537,7 +549,7 @@ function renderProductGrid(items) {
   }
 
   grid.innerHTML = items.map(product => {
-    const isMinePending = !!(currentUser && product.seller_id === currentUser.id && !product.approved);
+    const isMinePending = !!(product.__isOwnPending || (currentUser && product.seller_id === currentUser.id && !product.approved));
     const tgLink = formatTelegramLink(product.contact, product.title);
 
     return `
@@ -606,17 +618,25 @@ async function handlePostProduct(e) {
 
   try {
     const { product } = await postProductRemote({
-      title, price, category, location, contact, image, description: desc
+      title,
+      price,
+      category,
+      location,
+      contact,
+      image,
+      description: desc,
+      approved: false
     });
 
     if (!product || !product.id) {
       throw new Error('Server did not return the created listing — please try again.');
     }
 
-    myListings.unshift(product);
+    myListings.unshift({ ...product, approved: false, __isOwnPending: true });
 
     // Reset form and upload dropzone
-    document.getElementById('sell-form').reset();
+    const sellForm = document.getElementById('sell-form');
+    if (sellForm) sellForm.reset();
     removeSelectedImage();
 
     showToast("Submitted! Your listing is pending admin approval.");
@@ -710,3 +730,4 @@ function showToast(text) {
     toast.classList.remove('show');
   }, 2500);
 }
+
