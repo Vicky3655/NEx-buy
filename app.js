@@ -62,53 +62,29 @@ let currentUploadedImageBase64 = null;
 // Nexbuy is a Telegram Mini App, so sign-in is now Telegram-only:
 // the old email/matric/password form is retired because there is
 // no backend behind it that could ever check a password safely.
-// Instead, on every load we take Telegram's signed `initData`,
-// hand it to a Supabase Edge Function that verifies it (that's the
-// only place your bot token lives), and get back a short-lived
-// token tied to a row in a `profiles` table.
+// Instead, on every load (and for every write), we take Telegram's
+// signed `initData` and hand it to a Supabase Edge Function, which
+// re-verifies it (that's the only place your bot token lives) and
+// then does the actual database work itself using the service-role
+// key. The browser never holds a Supabase session or token at all —
+// there's nothing to keep in sync, refresh, or get rejected by a
+// project's particular key configuration.
 //
-// Nothing here touches index.html or style.css: the Supabase SDK
-// is loaded dynamically, and every new screen (the "open in
-// Telegram" gate, the loading state, the one-time hostel picker)
-// is built from elements that already exist in your stylesheet
-// (.auth-card, .input-group, .btn-primary, .restriction-box, etc).
+// Nothing here touches index.html or style.css: every new screen
+// (the "open in Telegram" gate, the loading state, the one-time
+// hostel picker) is built from elements that already exist in your
+// stylesheet (.auth-card, .input-group, .btn-primary, .restriction-box).
 // ============================================================
 
 // TODO: replace with your project's own values (Project Settings -> API)
 const SUPABASE_URL = "https://tartoasyifwxgfgfurep.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRhcnRvYXN5aWZ3eGdmZ2Z1cmVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ0MDQzODcsImV4cCI6MjA5OTk4MDM4N30.TUjeSDs0zCCPiPtGjOBxghjOIyZfkga8nLoV39Fbj6k";
 
-let sbClient = null;          // set once the Supabase SDK has loaded
-let cachedToken = null;       // the current signed-in JWT
-let cachedTokenExpiresAt = 0; // epoch ms
-
-// Loads the Supabase JS SDK from a CDN at runtime, so index.html
-// never needs a new <script> tag.
-function loadSupabaseSdk() {
-  return new Promise((resolve, reject) => {
-    if (window.supabase && window.supabase.createClient) {
-      resolve();
-      return;
-    }
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Failed to load the Supabase SDK'));
-    document.head.appendChild(script);
-  });
-}
-
-// Sends Telegram's initData to the telegram-auth Edge Function and
-// caches the token it returns. Uses plain fetch (not sbClient) on
-// purpose, since this call has to work even before/without a signed
-// session, and must never depend on the very token it's fetching.
-async function requestTelegramSession() {
-  const tg = window.Telegram && window.Telegram.WebApp;
-  const initData = tg && tg.initData;
-  if (!initData) {
-    throw new Error('not-in-telegram');
-  }
-
+// Calls a Supabase Edge Function with plain fetch — no Supabase SDK, no
+// client-side session. Every privileged action re-proves who's calling by
+// sending Telegram's initData fresh each time; the function verifies it
+// server-side before touching the database.
+async function callEdgeFunction(name, body) {
   if (SUPABASE_URL.includes('YOUR-PROJECT-REF') || SUPABASE_ANON_KEY.includes('YOUR-ANON')) {
     throw new Error(
       "app.js still has placeholder Supabase values — replace SUPABASE_URL and SUPABASE_ANON_KEY near the top of the file with your real project's values."
@@ -117,14 +93,14 @@ async function requestTelegramSession() {
 
   let response;
   try {
-    response = await fetch(`${SUPABASE_URL}/functions/v1/telegram-auth`, {
+    response = await fetch(`${SUPABASE_URL}/functions/v1/${name}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'apikey': SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
       },
-      body: JSON.stringify({ initData })
+      body: JSON.stringify(body)
     });
   } catch (networkErr) {
     // fetch() itself throws for DNS failures, offline devices, blocked
@@ -134,36 +110,33 @@ async function requestTelegramSession() {
 
   const data = await response.json().catch(() => ({}));
 
-  if (!response.ok || !data.token) {
+  if (!response.ok) {
     // Supabase's own gateway (e.g. when "Verify JWT" blocks the request
     // before your code runs) doesn't always use the same {error} shape
     // your function returns, so check a few common fields before falling
     // back to the raw HTTP status.
     const reason = data.error || data.message || data.msg || `HTTP ${response.status}`;
-    throw new Error(`Sign-in failed: ${reason}`);
+    throw new Error(`${name} failed: ${reason}`);
   }
 
-  cachedToken = data.token;
-  cachedTokenExpiresAt = data.expiresAt;
   return data;
 }
 
-// Passed to createClient as the `accessToken` hook: the Supabase
-// client calls this on its own whenever it needs to authenticate a
-// request (e.g. updating your profile), so a fresh token is fetched
-// automatically once the cached one is close to expiring.
-async function getValidAccessToken() {
-  const now = Date.now();
-  if (cachedToken && cachedTokenExpiresAt - now > 30000) {
-    return cachedToken;
-  }
-  try {
-    await requestTelegramSession();
-  } catch (err) {
-    console.error('Could not refresh Telegram session:', err);
-    return null;
-  }
-  return cachedToken;
+function getTelegramInitData() {
+  const tg = window.Telegram && window.Telegram.WebApp;
+  const initData = tg && tg.initData;
+  if (!initData) throw new Error('not-in-telegram');
+  return initData;
+}
+
+async function requestTelegramSession() {
+  const initData = getTelegramInitData();
+  return callEdgeFunction('telegram-auth', { initData });
+}
+
+async function updateLocation(location) {
+  const initData = getTelegramInitData();
+  return callEdgeFunction('update-location', { initData, location });
 }
 
 function mapProfileToUser(profile) {
@@ -327,9 +300,8 @@ async function handleLocationSetup(e) {
   if (submitBtn) submitBtn.disabled = true;
 
   try {
-    const { error } = await sbClient.from('profiles').update({ location }).eq('id', currentUser.id);
-    if (error) throw error;
-    currentUser.location = location;
+    const { profile } = await updateLocation(location);
+    currentUser = mapProfileToUser(profile);
     showMainApp();
   } catch (err) {
     console.error(err);
@@ -343,23 +315,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   initTheme();
   renderProducts();
   hideLegacyAuthForms();
-
-  try {
-    await loadSupabaseSdk();
-    sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-        detectSessionInUrl: false
-      },
-      accessToken: getValidAccessToken
-    });
-  } catch (err) {
-    console.error('Could not load the Supabase SDK:', err);
-    renderAuthError('Could not reach Nexbuy servers. Check your connection and try again.');
-    return;
-  }
-
   await initAuth();
 });
 
@@ -412,10 +367,8 @@ function showMainApp() {
 
 function handleLogout() {
   // Telegram sign-in is required, so there's no separate account to log
-  // out of — this just clears the cached session and re-verifies you
-  // against Telegram again (useful if your profile ever looks stale).
-  cachedToken = null;
-  cachedTokenExpiresAt = 0;
+  // out of — this just re-verifies you against Telegram again (useful if
+  // your profile ever looks stale).
   currentUser = null;
   document.getElementById('main-app').classList.add('hidden');
   document.getElementById('auth-container').classList.remove('hidden');
