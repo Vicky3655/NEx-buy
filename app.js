@@ -38,8 +38,8 @@ let currentUploadedImageBase64 = null;
 // ============================================================
 
 // TODO: replace with your project's own values (Project Settings -> API)
-const SUPABASE_URL = "https://tartoasyifwxgfgfurep.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRhcnRvYXN5aWZ3eGdmZ2Z1cmVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ0MDQzODcsImV4cCI6MjA5OTk4MDM4N30.TUjeSDs0zCCPiPtGjOBxghjOIyZfkga8nLoV39Fbj6k";
+const SUPABASE_URL = "https://YOUR-PROJECT-REF.supabase.co";
+const SUPABASE_ANON_KEY = "YOUR-ANON-PUBLIC-KEY";
 
 // Calls a Supabase Edge Function with plain fetch — no Supabase SDK, no
 // client-side session. Every privileged action re-proves who's calling by
@@ -492,10 +492,21 @@ function setCategory(cat) {
   filterProducts();
 }
 
+// The public grid is approved-only, but a user should still see their own
+// pending listing somewhere obvious rather than it vanishing until
+// approved — so it's merged in here, just for them, clearly marked.
+function getDisplayProducts() {
+  const approvedIds = new Set(products.map(p => p.id));
+  const myPending = currentUser
+    ? myListings.filter(p => !p.approved && !approvedIds.has(p.id))
+    : [];
+  return [...myPending, ...products];
+}
+
 function filterProducts() {
   const query = document.getElementById('search-input').value.toLowerCase();
   
-  const filtered = products.filter(item => {
+  const filtered = getDisplayProducts().filter(item => {
     const matchesCat = (currentCategory === 'All' || item.category === currentCategory);
     const matchesQuery = item.title.toLowerCase().includes(query) || 
                          item.location.toLowerCase().includes(query) ||
@@ -507,7 +518,7 @@ function filterProducts() {
 }
 
 function renderProducts() {
-  renderProductGrid(products);
+  renderProductGrid(getDisplayProducts());
 }
 
 function renderProductGrid(items) {
@@ -524,10 +535,12 @@ function renderProductGrid(items) {
   }
 
   grid.innerHTML = items.map(product => {
+    const isMinePending = !!(currentUser && product.seller_id === currentUser.id && !product.approved);
     const tgLink = formatTelegramLink(product.contact, product.title);
 
     return `
-      <div class="product-card">
+      <div class="product-card ${isMinePending ? 'boosted' : ''}" ${isMinePending ? 'style="border-color: var(--neon-amber); box-shadow: 0 0 15px rgba(245, 158, 11, 0.25);"' : ''}>
+        ${isMinePending ? `<span class="boost-tag" style="background: var(--neon-amber);"><i class="fa-solid fa-clock"></i> Awaiting Approval</span>` : ''}
         <img src="${product.image}" alt="${product.title}" class="product-img" onerror="this.src='https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&q=80'">
         <div class="product-info">
           <span class="product-category-tag">${product.category}</span>
@@ -537,9 +550,10 @@ function renderProductGrid(items) {
             <span>${product.location}</span>
           </div>
           <div class="product-price">₦${Number(product.price).toLocaleString()}</div>
-          <a href="${tgLink}" target="_blank" class="btn-contact">
-            <i class="fa-brands fa-telegram"></i> Chat on Telegram
-          </a>
+          ${isMinePending
+            ? `<div class="btn-contact" style="opacity:0.55; background: var(--text-muted);"><i class="fa-solid fa-hourglass-half"></i> Pending Review</div>`
+            : `<a href="${tgLink}" target="_blank" class="btn-contact"><i class="fa-brands fa-telegram"></i> Chat on Telegram</a>`
+          }
         </div>
       </div>
     `;
@@ -600,7 +614,8 @@ async function handlePostProduct(e) {
     removeSelectedImage();
 
     showToast("Submitted! Your listing is pending admin approval.");
-    switchView('profile-view');
+    switchView('home-view');
+    renderProducts();
   } catch (err) {
     console.error(err);
     showToast(err && err.message ? err.message : "Couldn't post that, please try again.");
