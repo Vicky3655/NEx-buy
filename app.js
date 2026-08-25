@@ -496,11 +496,13 @@ function setCategory(cat) {
 // pending listing somewhere obvious rather than it vanishing until
 // approved — so it's merged in here, just for them, clearly marked.
 function getDisplayProducts() {
-  const approvedIds = new Set(products.map(p => p.id));
+  const safeProducts = products.filter(p => p && p.id);
+  const safeListings = myListings.filter(p => p && p.id);
+  const approvedIds = new Set(safeProducts.map(p => p.id));
   const myPending = currentUser
-    ? myListings.filter(p => !p.approved && !approvedIds.has(p.id))
+    ? safeListings.filter(p => !p.approved && !approvedIds.has(p.id))
     : [];
-  return [...myPending, ...products];
+  return [...myPending, ...safeProducts];
 }
 
 function filterProducts() {
@@ -607,6 +609,10 @@ async function handlePostProduct(e) {
       title, price, category, location, contact, image, description: desc
     });
 
+    if (!product || !product.id) {
+      throw new Error('Server did not return the created listing — please try again.');
+    }
+
     myListings.unshift(product);
 
     // Reset form and upload dropzone
@@ -634,16 +640,17 @@ function updateProfileUI() {
   document.getElementById('prof-vendor-tier').innerText = currentUser.tier || "Free";
   document.getElementById('prof-nex-points').innerText = currentUser.points || 150;
 
-  document.getElementById('prof-active-listings').innerText = myListings.length;
+  const safeListings = myListings.filter(p => p && p.id);
+  document.getElementById('prof-active-listings').innerText = safeListings.length;
 
   const myItemsContainer = document.getElementById('user-own-listings');
-  if (myListings.length === 0) {
+  if (safeListings.length === 0) {
     myItemsContainer.innerHTML = `
       <div style="text-align: center; padding: 18px; color: var(--text-muted); font-size: 12px; background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-glass);">
         You haven't posted any products yet.
       </div>`;
   } else {
-    myItemsContainer.innerHTML = myListings.map(item => `
+    myItemsContainer.innerHTML = safeListings.map(item => `
       <div class="own-item-card">
         <div class="own-item-info">
           <img src="${item.image}" alt="${item.title}" class="own-item-thumb">
