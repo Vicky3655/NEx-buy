@@ -7,48 +7,9 @@ if (window.Telegram && window.Telegram.WebApp) {
   if (tg.setBackgroundColor) tg.setBackgroundColor('#0f051d');
 }
 
-// Initial Sample UNN Listings
-const defaultProducts = [
-  {
-    id: 1,
-    sellerId: "usr_1",
-    title: "GST 101 & 103 Textbook Pack",
-    price: 3500,
-    category: "Academics",
-    location: "Mary Slessor Hostel",
-    contact: "@chidubem_unn",
-    image: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&q=80",
-    desc: "Complete first year package with summarized past questions.",
-    boosted: true
-  },
-  {
-    id: 2,
-    sellerId: "usr_2",
-    title: "HP Pavilion 15 (8GB RAM / 256 SSD)",
-    price: 185000,
-    category: "Gadgets",
-    location: "Franco Hostel",
-    contact: "@emeka_tech",
-    image: "https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=400&q=80",
-    desc: "Battery health is good. Suitable for coding and assignments.",
-    boosted: false
-  },
-  {
-    id: 3,
-    sellerId: "usr_1",
-    title: "Vintage Denim Jacket",
-    price: 7000,
-    category: "Fashion",
-    location: "Nkrumah Hostel",
-    contact: "@ngozi_unn",
-    image: "https://images.unsplash.com/photo-1576995853123-5a10305d93c0?w=400&q=80",
-    desc: "Oversized, UNN campus style.",
-    boosted: false
-  }
-];
-
 // Persistent App State
-let products = JSON.parse(localStorage.getItem('nexbuy_products')) || defaultProducts;
+let products = [];           // approved listings only, fetched from Supabase
+let myListings = [];         // the signed-in user's own listings (approved + pending)
 let currentCategory = 'All';
 let currentUser = null; // populated only after a verified Telegram + Supabase sign-in
 let isLightMode = localStorage.getItem('nexbuy_theme') === 'light';
@@ -139,6 +100,49 @@ async function updateLocation(location) {
   return callEdgeFunction('update-location', { initData, location });
 }
 
+async function postProductRemote(fields) {
+  const initData = getTelegramInitData();
+  return callEdgeFunction('manage-product', { initData, action: 'create', ...fields });
+}
+
+async function deleteProductRemote(productId) {
+  const initData = getTelegramInitData();
+  return callEdgeFunction('manage-product', { initData, action: 'delete', productId });
+}
+
+// Reads the public marketplace feed straight from Supabase's Data API
+// (PostgREST) with the anon key — no session needed here, since Row Level
+// Security on the products table already only exposes approved=true rows
+// to anonymous readers. This is the ONE place the app talks to Supabase's
+// REST API directly rather than through an Edge Function, since it's a
+// plain public read with nothing to verify.
+async function fetchApprovedProducts() {
+  if (SUPABASE_URL.includes('YOUR-PROJECT-REF') || SUPABASE_ANON_KEY.includes('YOUR-ANON')) {
+    return [];
+  }
+
+  const url = `${SUPABASE_URL}/rest/v1/products?select=*&approved=eq.true&order=created_at.desc`;
+  let response;
+  try {
+    response = await fetch(url, {
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+      }
+    });
+  } catch (err) {
+    console.error('Could not load marketplace listings:', err);
+    return [];
+  }
+
+  if (!response.ok) {
+    console.error('Could not load marketplace listings, HTTP', response.status);
+    return [];
+  }
+
+  return response.json();
+}
+
 function mapProfileToUser(profile) {
   return {
     id: profile.id,
@@ -165,12 +169,15 @@ async function initAuth() {
   renderAuthLoading("Verifying your Telegram account…");
 
   try {
-    const { profile } = await requestTelegramSession();
+    const { profile, myListings: ownListings } = await requestTelegramSession();
     currentUser = mapProfileToUser(profile);
+    myListings = ownListings || [];
 
     if (!profile.location) {
       renderLocationSetup(profile);
     } else {
+      products = await fetchApprovedProducts();
+      renderProducts();
       showMainApp();
     }
   } catch (err) {
@@ -302,6 +309,8 @@ async function handleLocationSetup(e) {
   try {
     const { profile } = await updateLocation(location);
     currentUser = mapProfileToUser(profile);
+    products = await fetchApprovedProducts();
+    renderProducts();
     showMainApp();
   } catch (err) {
     console.error(err);
@@ -403,6 +412,9 @@ function switchView(viewId) {
   if (viewId === 'profile-view') {
     updateProfileUI();
   }
+  if (viewId === 'sell-view') {
+    updateSellAccessUI();
+  }
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -487,7 +499,7 @@ function filterProducts() {
     const matchesCat = (currentCategory === 'All' || item.category === currentCategory);
     const matchesQuery = item.title.toLowerCase().includes(query) || 
                          item.location.toLowerCase().includes(query) ||
-                         item.desc.toLowerCase().includes(query);
+                         (item.description || '').toLowerCase().includes(query);
     return matchesCat && matchesQuery;
   });
 
@@ -515,8 +527,7 @@ function renderProductGrid(items) {
     const tgLink = formatTelegramLink(product.contact, product.title);
 
     return `
-      <div class="product-card ${product.boosted ? 'boosted' : ''}">
-        ${product.boosted ? `<span class="boost-tag"><i class="fa-solid fa-bolt"></i> Boosted</span>` : ''}
+      <div class="product-card">
         <img src="${product.image}" alt="${product.title}" class="product-img" onerror="this.src='https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&q=80'">
         <div class="product-info">
           <span class="product-category-tag">${product.category}</span>
@@ -547,7 +558,7 @@ function formatTelegramLink(contact, productTitle) {
 }
 
 // ================= POST PRODUCT HANDLER =================
-function handlePostProduct(e) {
+async function handlePostProduct(e) {
   e.preventDefault();
 
   const title = document.getElementById('post-title').value;
@@ -574,29 +585,28 @@ function handlePostProduct(e) {
     image = fallbackImages[category] || fallbackImages['Gadgets'];
   }
 
-  const newProduct = {
-    id: Date.now(),
-    sellerId: currentUser ? currentUser.id : "usr_guest",
-    title,
-    price,
-    category,
-    location,
-    contact,
-    image,
-    desc,
-    boosted: false
-  };
+  const submitBtn = document.getElementById('post-submit-btn');
+  if (submitBtn) submitBtn.disabled = true;
 
-  products.unshift(newProduct);
-  saveProducts();
+  try {
+    const { product } = await postProductRemote({
+      title, price, category, location, contact, image, description: desc
+    });
 
-  // Reset form and upload dropzone
-  document.getElementById('sell-form').reset();
-  removeSelectedImage();
+    myListings.unshift(product);
 
-  showToast("Listing published on UNN Marketplace!");
-  switchView('home-view');
-  renderProducts();
+    // Reset form and upload dropzone
+    document.getElementById('sell-form').reset();
+    removeSelectedImage();
+
+    showToast("Submitted! Your listing is pending admin approval.");
+    switchView('profile-view');
+  } catch (err) {
+    console.error(err);
+    showToast(err && err.message ? err.message : "Couldn't post that, please try again.");
+  } finally {
+    if (submitBtn) submitBtn.disabled = false;
+  }
 }
 
 // ================= ENHANCED PROFILE CONTROLLER =================
@@ -609,48 +619,67 @@ function updateProfileUI() {
   document.getElementById('prof-vendor-tier').innerText = currentUser.tier || "Free";
   document.getElementById('prof-nex-points').innerText = currentUser.points || 150;
 
-  const myItems = products.filter(p => p.sellerId === currentUser.id);
-  document.getElementById('prof-active-listings').innerText = myItems.length;
+  document.getElementById('prof-active-listings').innerText = myListings.length;
 
   const myItemsContainer = document.getElementById('user-own-listings');
-  if (myItems.length === 0) {
+  if (myListings.length === 0) {
     myItemsContainer.innerHTML = `
       <div style="text-align: center; padding: 18px; color: var(--text-muted); font-size: 12px; background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-glass);">
         You haven't posted any products yet.
       </div>`;
   } else {
-    myItemsContainer.innerHTML = myItems.map(item => `
+    myItemsContainer.innerHTML = myListings.map(item => `
       <div class="own-item-card">
         <div class="own-item-info">
           <img src="${item.image}" alt="${item.title}" class="own-item-thumb">
           <div>
             <strong>${item.title}</strong>
             <span>₦${Number(item.price).toLocaleString()} • ${item.category}</span>
+            ${item.approved
+              ? ''
+              : `<span class="boost-tag" style="position:static; display:inline-block; margin-top:4px; background: var(--neon-amber);"><i class="fa-solid fa-clock"></i> Pending approval</span>`
+            }
           </div>
         </div>
-        <button class="btn-delete-own" onclick="deleteMyProduct(${item.id})">
+        <button class="btn-delete-own" onclick="deleteMyProduct('${item.id}')">
           <i class="fa-solid fa-trash"></i>
         </button>
       </div>
     `).join('');
   }
+
+  updateSellAccessUI();
 }
 
-function deleteMyProduct(id) {
-  if (confirm("Do you want to delete this listing?")) {
+// Shows the (previously unused) "Selling Restricted" banner and hides the
+// post form for anyone the admin hasn't approved to sell yet.
+function updateSellAccessUI() {
+  const banner = document.getElementById('sell-restriction-banner');
+  const form = document.getElementById('sell-form');
+  if (!banner || !form) return;
+
+  const canSell = !!(currentUser && currentUser.canSell);
+  banner.classList.toggle('hidden', canSell);
+  form.classList.toggle('hidden', !canSell);
+}
+
+async function deleteMyProduct(id) {
+  if (!confirm("Do you want to delete this listing?")) return;
+
+  try {
+    await deleteProductRemote(id);
+    myListings = myListings.filter(p => p.id !== id);
     products = products.filter(p => p.id !== id);
-    saveProducts();
     updateProfileUI();
     renderProducts();
     showToast("Listing deleted.");
+  } catch (err) {
+    console.error(err);
+    showToast(err && err.message ? err.message : "Couldn't delete that, please try again.");
   }
 }
 
 // ================= STORAGE HELPERS =================
-function saveProducts() {
-  localStorage.setItem('nexbuy_products', JSON.stringify(products));
-}
-
 function showToast(text) {
   const toast = document.getElementById('toast');
   toast.innerText = text;
@@ -659,4 +688,3 @@ function showToast(text) {
     toast.classList.remove('show');
   }, 2500);
 }
-
