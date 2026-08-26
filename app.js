@@ -69,7 +69,16 @@ async function callEdgeFunction(name, body) {
     throw new Error(`Could not reach Supabase (${networkErr.message}). Check SUPABASE_URL and your connection.`);
   }
 
-  const data = await response.json().catch(() => ({}));
+  const rawText = await response.text();
+  let data = {};
+  let parseFailed = false;
+  if (rawText) {
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      parseFailed = true;
+    }
+  }
 
   if (!response.ok) {
     // Supabase's own gateway (e.g. when "Verify JWT" blocks the request
@@ -78,6 +87,10 @@ async function callEdgeFunction(name, body) {
     // back to the raw HTTP status.
     const reason = data.error || data.message || data.msg || `HTTP ${response.status}`;
     throw new Error(`${name} failed: ${reason}`);
+  }
+
+  if (parseFailed) {
+    throw new Error(`${name} returned an unreadable response (HTTP ${response.status}, ${rawText.length} bytes) — the payload may be too large or truncated.`);
   }
 
   return data;
@@ -464,13 +477,9 @@ function handleImageSelect(event) {
       currentUploadedImageBase64 = canvas.toDataURL('image/jpeg', 0.75);
 
       // Display Preview & Hide Placeholder
-      const preview = document.getElementById('image-preview');
-      const placeholder = document.getElementById('upload-placeholder');
-      const previewContainer = document.getElementById('image-preview-container');
-
-      if (preview) preview.src = currentUploadedImageBase64;
-      if (placeholder) placeholder.classList.add('hidden');
-      if (previewContainer) previewContainer.classList.remove('hidden');
+      document.getElementById('image-preview').src = currentUploadedImageBase64;
+      document.getElementById('upload-placeholder').classList.add('hidden');
+      document.getElementById('image-preview-container').classList.remove('hidden');
       showToast("Photo attached successfully!");
     };
   };
@@ -481,16 +490,10 @@ function handleImageSelect(event) {
 function removeSelectedImage(event) {
   if (event) event.stopPropagation(); // Prevents re-opening the file dialog
   currentUploadedImageBase64 = null;
-
-  const fileInput = document.getElementById('post-file-input');
-  const preview = document.getElementById('image-preview');
-  const previewContainer = document.getElementById('image-preview-container');
-  const placeholder = document.getElementById('upload-placeholder');
-
-  if (fileInput) fileInput.value = "";
-  if (preview) preview.src = "";
-  if (previewContainer) previewContainer.classList.add('hidden');
-  if (placeholder) placeholder.classList.remove('hidden');
+  document.getElementById('post-file-input').value = "";
+  document.getElementById('image-preview').src = "";
+  document.getElementById('image-preview-container').classList.add('hidden');
+  document.getElementById('upload-placeholder').classList.remove('hidden');
 }
 
 // ================= MARKETPLACE CONTROLLERS =================
@@ -510,9 +513,7 @@ function getDisplayProducts() {
   const safeListings = myListings.filter(p => p && p.id);
   const approvedIds = new Set(safeProducts.map(p => p.id));
   const myPending = currentUser
-    ? safeListings
-        .filter(p => !p.approved && !approvedIds.has(p.id))
-        .map(p => ({ ...p, __isOwnPending: true }))
+    ? safeListings.filter(p => !p.approved && !approvedIds.has(p.id))
     : [];
   return [...myPending, ...safeProducts];
 }
@@ -549,11 +550,11 @@ function renderProductGrid(items) {
   }
 
   grid.innerHTML = items.map(product => {
-    const isMinePending = !!(product.__isOwnPending || (currentUser && product.seller_id === currentUser.id && !product.approved));
+    const isMinePending = !!(currentUser && product.seller_id === currentUser.id && !product.approved);
     const tgLink = formatTelegramLink(product.contact, product.title);
 
     return `
-      <div class="product-card ${isMinePending ? 'boosted' : ''}" ${isMinePending ? 'style="border-color: var(--neon-amber); box-shadow: 0 0 15px rgba(245, 158, 11, 0.25);"' : ''}>
+      <div class="product-card ${isMinePending ? 'boosted' : ''}" ${isMinePending ? 'style="border-color: var(--neon-amber); box-shadow: 0 0 15px rgba(245, 158, 11, 0.25); cursor:pointer;" ' : 'style="cursor:pointer;" '}onclick="openProductDetail('${product.id}')">
         ${isMinePending ? `<span class="boost-tag" style="background: var(--neon-amber);"><i class="fa-solid fa-clock"></i> Awaiting Approval</span>` : ''}
         <img src="${product.image}" alt="${product.title}" class="product-img" onerror="this.src='https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&q=80'">
         <div class="product-info">
@@ -566,12 +567,90 @@ function renderProductGrid(items) {
           <div class="product-price">₦${Number(product.price).toLocaleString()}</div>
           ${isMinePending
             ? `<div class="btn-contact" style="opacity:0.55; background: var(--text-muted);"><i class="fa-solid fa-hourglass-half"></i> Pending Review</div>`
-            : `<a href="${tgLink}" target="_blank" class="btn-contact"><i class="fa-brands fa-telegram"></i> Chat on Telegram</a>`
+            : `<a href="${tgLink}" target="_blank" class="btn-contact" onclick="event.stopPropagation()"><i class="fa-brands fa-telegram"></i> Chat on Telegram</a>`
           }
         </div>
       </div>
     `;
   }).join('');
+}
+
+// ================= PRODUCT DETAIL VIEW =================
+// Built entirely in JS from elements/classes that already exist in
+// style.css, so there's nothing new to add there — this just gives
+// buyers a full-size photo and the full description, which the compact
+// grid card has no room for.
+function ensureProductDetailOverlay() {
+  let el = document.getElementById('product-detail-overlay');
+  if (el) return el;
+
+  el = document.createElement('div');
+  el.id = 'product-detail-overlay';
+  el.className = 'hidden';
+  el.style.cssText = 'position:fixed; inset:0; background:rgba(5,2,10,0.75); backdrop-filter:blur(4px); z-index:500; display:flex; align-items:flex-end; justify-content:center;';
+  el.addEventListener('click', (e) => {
+    if (e.target === el) closeProductDetail();
+  });
+
+  el.innerHTML = `
+    <div style="background: var(--bg-card-solid); width:100%; max-width:480px; max-height:88vh; overflow-y:auto; border-radius: 22px 22px 0 0; box-shadow: 0 -10px 40px rgba(121,40,202,0.35);">
+      <div style="position:relative;">
+        <img id="pd-image" style="width:100%; height:220px; object-fit:cover; display:block; border-radius:22px 22px 0 0; background:#110522;">
+        <button onclick="closeProductDetail()" style="position:absolute; top:12px; right:12px; width:34px; height:34px; border-radius:50%; background:rgba(15,5,29,0.75); border:1px solid var(--border-glass); color:#fff; font-size:15px;">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+        <span id="pd-pending-tag" class="boost-tag hidden" style="background: var(--neon-amber);"><i class="fa-solid fa-clock"></i> Awaiting Approval</span>
+      </div>
+      <div style="padding:18px;">
+        <span id="pd-category" class="product-category-tag"></span>
+        <h3 id="pd-title" style="font-size:18px; font-weight:800; margin:6px 0; color:var(--text-white);"></h3>
+        <div class="product-loc" style="margin-bottom:10px;"><i class="fa-solid fa-location-dot"></i> <span id="pd-location"></span></div>
+        <div id="pd-price" style="font-size:20px; font-weight:800; color:var(--text-white); margin-bottom:14px;"></div>
+        <p id="pd-description" style="font-size:13px; color:var(--text-muted); line-height:1.6; margin-bottom:18px;"></p>
+        <a id="pd-contact" href="#" target="_blank" class="btn-contact" style="padding:12px; text-decoration:none;"></a>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(el);
+  return el;
+}
+
+function openProductDetail(productId) {
+  const product = getDisplayProducts().find(p => String(p.id) === String(productId));
+  if (!product) return;
+
+  const el = ensureProductDetailOverlay();
+  const isMinePending = !!(currentUser && product.seller_id === currentUser.id && !product.approved);
+
+  document.getElementById('pd-image').src = product.image;
+  document.getElementById('pd-category').innerText = product.category;
+  document.getElementById('pd-title').innerText = product.title;
+  document.getElementById('pd-location').innerText = product.location;
+  document.getElementById('pd-price').innerText = `₦${Number(product.price).toLocaleString()}`;
+  document.getElementById('pd-description').innerText = product.description || 'No description provided.';
+  document.getElementById('pd-pending-tag').classList.toggle('hidden', !isMinePending);
+
+  const contactBtn = document.getElementById('pd-contact');
+  if (isMinePending) {
+    contactBtn.removeAttribute('href');
+    contactBtn.style.pointerEvents = 'none';
+    contactBtn.style.opacity = '0.55';
+    contactBtn.style.background = 'var(--text-muted)';
+    contactBtn.innerHTML = `<i class="fa-solid fa-hourglass-half"></i> Pending Review`;
+  } else {
+    contactBtn.href = formatTelegramLink(product.contact, product.title);
+    contactBtn.style.pointerEvents = '';
+    contactBtn.style.opacity = '';
+    contactBtn.style.background = '';
+    contactBtn.innerHTML = `<i class="fa-brands fa-telegram"></i> Chat on Telegram`;
+  }
+
+  el.classList.remove('hidden');
+}
+
+function closeProductDetail() {
+  const el = document.getElementById('product-detail-overlay');
+  if (el) el.classList.add('hidden');
 }
 
 function formatTelegramLink(contact, productTitle) {
@@ -618,25 +697,22 @@ async function handlePostProduct(e) {
 
   try {
     const { product } = await postProductRemote({
-      title,
-      price,
-      category,
-      location,
-      contact,
-      image,
-      description: desc,
-      approved: false
+      title, price, category, location, contact, image, description: desc
     });
 
     if (!product || !product.id) {
       throw new Error('Server did not return the created listing — please try again.');
     }
 
-    myListings.unshift({ ...product, approved: false, __isOwnPending: true });
+    // manage-product no longer echoes the image back (see server-side
+    // change) — we already have it locally from the upload, so re-attach
+    // it here rather than needing a second round trip.
+    product.image = image;
+
+    myListings.unshift(product);
 
     // Reset form and upload dropzone
-    const sellForm = document.getElementById('sell-form');
-    if (sellForm) sellForm.reset();
+    document.getElementById('sell-form').reset();
     removeSelectedImage();
 
     showToast("Submitted! Your listing is pending admin approval.");
