@@ -41,6 +41,14 @@ let currentUploadedImageBase64 = null;
 const SUPABASE_URL = "https://tartoasyifwxgfgfurep.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRhcnRvYXN5aWZ3eGdmZ2Z1cmVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ0MDQzODcsImV4cCI6MjA5OTk4MDM4N30.TUjeSDs0zCCPiPtGjOBxghjOIyZfkga8nLoV39Fbj6k";
 
+// All "Chat on Telegram" buttons route here now, not to each seller's own
+// contact — the admin is the point of contact for every listing (fits the
+// commission model: the admin coordinates the sale rather than buyer and
+// seller dealing directly). Sellers' own contact info is still collected
+// and stored, and shown to the admin in the moderation dashboard, so
+// there's still a way to actually reach them to arrange things.
+const ADMIN_TELEGRAM_CONTACT = "@Boye365";
+
 // Calls a Supabase Edge Function with plain fetch — no Supabase SDK, no
 // client-side session. Every privileged action re-proves who's calling by
 // sending Telegram's initData fresh each time; the function verifies it
@@ -551,7 +559,7 @@ function renderProductGrid(items) {
 
   grid.innerHTML = items.map(product => {
     const isMinePending = !!(currentUser && product.seller_id === currentUser.id && !product.approved);
-    const tgLink = formatTelegramLink(product.contact, product.title);
+    const tgLink = formatTelegramLink(ADMIN_TELEGRAM_CONTACT, product.title);
 
     return `
       <div class="product-card ${isMinePending ? 'boosted' : ''}" ${isMinePending ? 'style="border-color: var(--neon-amber); box-shadow: 0 0 15px rgba(245, 158, 11, 0.25); cursor:pointer;" ' : 'style="cursor:pointer;" '}onclick="openProductDetail('${product.id}')">
@@ -600,6 +608,9 @@ function ensureProductDetailOverlay() {
           <i class="fa-solid fa-xmark"></i>
         </button>
         <span id="pd-pending-tag" class="boost-tag hidden" style="background: var(--neon-amber);"><i class="fa-solid fa-clock"></i> Awaiting Approval</span>
+        <button onclick="openImageLightbox(document.getElementById('pd-image').src)" style="position:absolute; bottom:12px; right:12px; background:rgba(15,5,29,0.75); border:1px solid var(--border-glass); color:#fff; font-size:11px; font-weight:700; padding:7px 12px; border-radius:20px; display:flex; align-items:center; gap:6px;">
+          <i class="fa-solid fa-expand"></i> View Full Image
+        </button>
       </div>
       <div style="padding:18px;">
         <span id="pd-category" class="product-category-tag"></span>
@@ -613,6 +624,40 @@ function ensureProductDetailOverlay() {
   `;
   document.body.appendChild(el);
   return el;
+}
+
+// Full-screen, uncropped view of the photo — object-fit:contain here
+// (instead of the cover crop used everywhere else) is what actually shows
+// its full length rather than cutting off a tall/portrait shot.
+function ensureImageLightbox() {
+  let el = document.getElementById('image-lightbox');
+  if (el) return el;
+
+  el = document.createElement('div');
+  el.id = 'image-lightbox';
+  el.className = 'hidden';
+  el.style.cssText = 'position:fixed; inset:0; background:rgba(5,2,10,0.95); z-index:600; display:flex; align-items:center; justify-content:center; padding:24px;';
+  el.addEventListener('click', () => closeImageLightbox());
+
+  el.innerHTML = `
+    <img id="lightbox-image" style="max-width:100%; max-height:100%; object-fit:contain; border-radius:8px;">
+    <button onclick="closeImageLightbox()" style="position:absolute; top:20px; right:20px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.1); border:1px solid var(--border-glass); color:#fff; font-size:17px;">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  `;
+  document.body.appendChild(el);
+  return el;
+}
+
+function openImageLightbox(imageSrc) {
+  const el = ensureImageLightbox();
+  document.getElementById('lightbox-image').src = imageSrc;
+  el.classList.remove('hidden');
+}
+
+function closeImageLightbox() {
+  const el = document.getElementById('image-lightbox');
+  if (el) el.classList.add('hidden');
 }
 
 function openProductDetail(productId) {
@@ -638,7 +683,7 @@ function openProductDetail(productId) {
     contactBtn.style.background = 'var(--text-muted)';
     contactBtn.innerHTML = `<i class="fa-solid fa-hourglass-half"></i> Pending Review`;
   } else {
-    contactBtn.href = formatTelegramLink(product.contact, product.title);
+    contactBtn.href = formatTelegramLink(ADMIN_TELEGRAM_CONTACT, product.title);
     contactBtn.style.pointerEvents = '';
     contactBtn.style.opacity = '';
     contactBtn.style.background = '';
@@ -655,7 +700,7 @@ function closeProductDetail() {
 
 function formatTelegramLink(contact, productTitle) {
   const cleanContact = String(contact).trim().replace('@', '');
-  const message = encodeURIComponent(`Hi, I saw your listing on Nexbuy: "${productTitle}". Is it still available?`);
+  const message = encodeURIComponent(`Hi, I'm interested in this Nexbuy listing: "${productTitle}". Is it still available?`);
   
   if (cleanContact.startsWith('0') || cleanContact.startsWith('234') || cleanContact.startsWith('+')) {
     const phone = cleanContact.replace(/\D/g, '').replace(/^0/, '234');
