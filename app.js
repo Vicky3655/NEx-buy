@@ -47,7 +47,7 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 // seller dealing directly). Sellers' own contact info is still collected
 // and stored, and shown to the admin in the moderation dashboard, so
 // there's still a way to actually reach them to arrange things.
-const ADMIN_TELEGRAM_CONTACT = "@Boye365";
+const ADMIN_TELEGRAM_CONTACT = "@IfeyBuild";
 
 // Calls a Supabase Edge Function with plain fetch — no Supabase SDK, no
 // client-side session. Every privileged action re-proves who's calling by
@@ -142,7 +142,7 @@ async function fetchApprovedProducts() {
     return [];
   }
 
-  const url = `${SUPABASE_URL}/rest/v1/products?select=*&approved=eq.true&order=created_at.desc`;
+  const url = `${SUPABASE_URL}/rest/v1/products?select=*&approved=eq.true&sold=eq.false&order=created_at.desc`;
   let response;
   try {
     response = await fetch(url, {
@@ -798,9 +798,11 @@ function updateProfileUI() {
           <div>
             <strong>${item.title}</strong>
             <span>₦${Number(item.price).toLocaleString()} • ${item.category}</span>
-            ${item.approved
-              ? ''
-              : `<span class="boost-tag" style="position:static; display:inline-block; margin-top:4px; background: var(--neon-amber);"><i class="fa-solid fa-clock"></i> Pending approval</span>`
+            ${item.sold
+              ? `<span class="boost-tag" style="position:static; display:inline-block; margin-top:4px; background: var(--neon-green);"><i class="fa-solid fa-circle-check"></i> Sold</span>`
+              : item.approved
+                ? ''
+                : `<span class="boost-tag" style="position:static; display:inline-block; margin-top:4px; background: var(--neon-amber);"><i class="fa-solid fa-clock"></i> Pending approval</span>`
             }
           </div>
         </div>
