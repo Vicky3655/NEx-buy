@@ -49,6 +49,11 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 // there's still a way to actually reach them to arrange things.
 const ADMIN_TELEGRAM_CONTACT = "@IfeyBuild";
 
+// Used for the "Nexbuy UNN Support" item in Profile settings, which opens
+// WhatsApp rather than Telegram. Country code + number, digits only — no
+// "+", spaces, or leading zero (e.g. Nigerian 0801... becomes 234801...).
+const ADMIN_WHATSAPP_NUMBER = "2348000000000";
+
 // Calls a Supabase Edge Function with plain fetch — no Supabase SDK, no
 // client-side session. Every privileged action re-proves who's calling by
 // sending Telegram's initData fresh each time; the function verifies it
@@ -179,6 +184,11 @@ function mapProfileToUser(profile) {
 // Runs the whole sign-in flow: verify Telegram -> load/create the
 // profile -> either finish signing in or ask for a hostel just once.
 async function initAuth() {
+  if (localStorage.getItem('nexbuy_logged_out') === 'true') {
+    renderLoggedOut();
+    return;
+  }
+
   const tg = window.Telegram && window.Telegram.WebApp;
   const initData = tg && tg.initData;
 
@@ -245,6 +255,31 @@ function renderTelegramGate() {
       </p>
     </div>
   `;
+}
+
+function renderLoggedOut() {
+  const el = getAuthFlowContainer();
+  el.innerHTML = `
+    <div style="text-align:center; padding: 4px 0 6px;">
+      <div class="upload-icon-circle" style="margin: 0 auto 14px;">
+        <i class="fa-solid fa-right-from-bracket"></i>
+      </div>
+      <strong style="display:block; font-size:14px; color: var(--text-white); margin-bottom:8px;">
+        You've signed out of Nexbuy
+      </strong>
+      <p class="hint" style="font-size:12px; line-height:1.6; margin-bottom:16px;">
+        Tap below to sign back in with your Telegram account.
+      </p>
+      <button type="button" class="btn-tg" onclick="handleSignInAgain()">
+        <i class="fa-brands fa-telegram"></i> Sign In with Telegram
+      </button>
+    </div>
+  `;
+}
+
+function handleSignInAgain() {
+  localStorage.removeItem('nexbuy_logged_out');
+  initAuth();
 }
 
 function renderAuthLoading(message) {
@@ -347,6 +382,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initTheme();
   renderProducts();
   hideLegacyAuthForms();
+  wireSupportLink();
   await initAuth();
 });
 
@@ -398,14 +434,18 @@ function showMainApp() {
 }
 
 function handleLogout() {
-  // Telegram sign-in is required, so there's no separate account to log
-  // out of — this just re-verifies you against Telegram again (useful if
-  // your profile ever looks stale).
+  // Telegram will always have fresh initData ready the instant the app is
+  // open, so without this flag "logging out" would just re-verify and
+  // land you right back in — indistinguishable from doing nothing. The
+  // flag is what makes it stick until you explicitly choose to sign back
+  // in, including across fully closing and reopening the Mini App.
+  localStorage.setItem('nexbuy_logged_out', 'true');
   currentUser = null;
+  myListings = [];
+  products = [];
   document.getElementById('main-app').classList.add('hidden');
   document.getElementById('auth-container').classList.remove('hidden');
-  showToast("Refreshing your Nexbuy session…");
-  initAuth();
+  renderLoggedOut();
 }
 
 // ================= VIEW SWITCHER =================
@@ -709,6 +749,36 @@ function formatTelegramLink(contact, productTitle) {
     return `https://t.me/+${phone}`;
   }
   return `https://t.me/${cleanContact}?text=${message}`;
+}
+
+// Opens a link outside the Mini App. Telegram's own WebApp SDK provides
+// openLink specifically for this (a plain <a target="_blank"> can behave
+// inconsistently inside Telegram's in-app browser), so that's used when
+// available, falling back to a normal new tab otherwise.
+function openExternalLink(url) {
+  const tg = window.Telegram && window.Telegram.WebApp;
+  if (tg && typeof tg.openLink === 'function') {
+    tg.openLink(url);
+  } else {
+    window.open(url, '_blank');
+  }
+}
+
+function openSupportChat() {
+  const message = encodeURIComponent("Hi, I need help with Nexbuy.");
+  openExternalLink(`https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${message}`);
+}
+
+// index.html's Support row has its click behavior inline in the markup
+// (showToast(...)) — this overrides it in JS at startup rather than
+// editing that file, matching how the rest of this app avoids touching
+// index.html/style.css.
+function wireSupportLink() {
+  document.querySelectorAll('.setting-item').forEach(el => {
+    if (el.textContent.includes('Nexbuy UNN Support')) {
+      el.onclick = openSupportChat;
+    }
+  });
 }
 
 // ================= POST PRODUCT HANDLER =================
