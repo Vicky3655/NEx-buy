@@ -241,8 +241,7 @@ function renderTelegramGate() {
       </strong>
       <p class="hint" style="font-size:12px; line-height:1.6;">
         Nexbuy only works as a Telegram Mini App, since that's how we verify
-        you're a real UNN student. Please launch it from the Nexbuy bot or
-        channel link inside Telegram.
+        you're a real UNN student. 
       </p>
     </div>
   `;
@@ -288,12 +287,15 @@ function renderLocationSetup(profile) {
         <div class="input-box">
           <i class="fa-solid fa-location-dot"></i>
           <select id="setup-location" required>
-            <option value="Franco Hostel">Franco Hostel (UNN)</option>
-            <option value="Mary Slessor Hostel">Mary Slessor Hostel</option>
+            <option value="Eni-Njoku Hostel">Eni-Njoku Hostel (UNN)</option>
+            <option value="Bello Hostel">Bello Hostel</option>
+            <option value="Presidential Hostel">Presidential Hostel</option>
             <option value="Nkrumah Hostel">Nkrumah Hostel</option>
             <option value="Hilltop Nsukka">Hilltop Area</option>
             <option value="Odenigwe">Odenigwe</option>
+            <option value="ODIM Area">ODIM Area</option>
             <option value="UNEC Campus">UNEC Campus</option>
+            <option value="Others">Others</option>
           </select>
         </div>
       </div>
