@@ -52,7 +52,7 @@ const ADMIN_TELEGRAM_CONTACT = "@IfeyBuild";
 // Used for the "Nexbuy UNN Support" item in Profile settings, which opens
 // WhatsApp rather than Telegram. Country code + number, digits only — no
 // "+", spaces, or leading zero (e.g. Nigerian 0801... becomes 234801...).
-const ADMIN_WHATSAPP_NUMBER = "2348000000000";
+const ADMIN_WHATSAPP_NUMBER = "2349039096726";
 
 // Calls a Supabase Edge Function with plain fetch — no Supabase SDK, no
 // client-side session. Every privileged action re-proves who's calling by
